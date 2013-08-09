@@ -314,9 +314,19 @@ int bpk_read_file(bpk *bpk, const char *file)
 
     char *buff = malloc(2048);
     size_t len;
+    bpk_size size = bpk->size - bpk->pos;
 
-    while ((len = fread(buff, 1, 2048, bpk->fd)) > 0)
+    while (size != 0)
     {
+        len = (size > 2048) ? 2048 : size;
+
+        len = fread(buff, 1, len, bpk->fd);
+        if (len <= 0)
+            break;
+
+        size -= len;
+        bpk->pos += len;
+
         if (fwrite(buff, len, 1, fd_out) != 1)
         {
             fclose(fd_out);

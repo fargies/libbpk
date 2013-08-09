@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 
-project(libbpk C)
+project(libbpk C CXX)
 
 include(GitVersion.cmake)
 
@@ -13,6 +13,7 @@ option(TOOLS "Compile command line tools" ON)
 option(TESTS "Compile and run unit tests" OFF)
 
 if (TESTS)
+    include(FindPkgConfig)
     pkg_check_modules(CPPUNIT cppunit)
     if (NOT CPPUNIT_FOUND)
         find_library(CPPUNIT_LIBRARIES
