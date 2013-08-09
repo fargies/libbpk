@@ -12,6 +12,13 @@ set(libbpk_VERSION "${libbpk_VER_MAJOR}.${libbpk_VER_MINOR}.${libbpk_VER_PATCH}"
 option(TOOLS "Compile command line tools" ON)
 option(TESTS "Compile and run unit tests" OFF)
 
+option(COVERAGE "Enable gcov code coverage" OFF)
+if (COVERAGE)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage -lgcov")
+endif(COVERAGE)
+
 if (TESTS)
     include(FindPkgConfig)
     pkg_check_modules(CPPUNIT cppunit)
@@ -31,6 +38,14 @@ include(Dependencies.cmake)
 
 configure_file("config.h.in" "config.h")
 configure_file("version.h.in" "version.h")
+
+configure_file("libbpk.pc.in" "libbpk.pc" @ONLY)
+install(FILES ${CMAKE_BINARY_DIR}/libbpk.pc
+    DESTINATION lib/pkgconfig COMPONENT devel)
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -W -Wall -Wextra")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -W -Wall -Wextra")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wnon-virtual-dtor -Woverloaded-virtual -Wunused-parameter -Wuninitialized")
 
 add_subdirectory(src)
 add_subdirectory(tests)

@@ -67,7 +67,7 @@ STAILQ_HEAD(parthead, part);
 
 static bpk_type get_bpk_type(const char *type_str)
 {
-    int i;
+    unsigned int i;
 
     for (i = 0; i < bpk_types_str_size; ++i)
     {
@@ -79,7 +79,7 @@ static bpk_type get_bpk_type(const char *type_str)
 
 static const char *get_bpk_str(bpk_type type)
 {
-    int i;
+    unsigned int i;
 
     for (i = 0; i < bpk_types_str_size; ++i)
     {
@@ -200,7 +200,7 @@ int main(int argc, char **argv)
     {
         case 't':
             {
-                int i;
+                unsigned int i;
 
                 fprintf(stdout, "Supported partitions types: \n");
                 for (i = 0; i < bpk_types_str_size; ++i)

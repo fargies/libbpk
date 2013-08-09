@@ -11,10 +11,10 @@ set(libbpk_PUBHDRS
 add_library(bpk SHARED
     ${libbpk_SRCS} ${libbpk_PUBHDRS})
 set_target_properties(bpk PROPERTIES
-    PUBLIC_HEADERS ${libbpk_PUBHDRS})
+    PUBLIC_HEADER ${libbpk_PUBHDRS})
 install(TARGETS bpk
     ARCHIVE DESTINATION lib COMPONENT Devel
     LIBRARY DESTINATION lib COMPONENT Runtime
     RUNTIME DESTINATION bin COMPONENT Runtime
-    PUBLIC_HEADER DESTINATION include/${PROJECT_NAME} COMPONENT devel)
+    PUBLIC_HEADER DESTINATION include/${PROJECT_NAME} COMPONENT Devel)
 

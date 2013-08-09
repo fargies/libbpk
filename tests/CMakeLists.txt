@@ -20,6 +20,8 @@ set(test_SRCS
 
 add_executable(test_all ${test_SRCS})
 target_link_libraries(test_all testHelper bpk)
+install(TARGETS test_all
+    RUNTIME DESTINATION tests/${PROJECT_NAME} COMPONENT tests)
 
 add_test(test_all ${CMAKE_CURRENT_BINARY_DIR}/test_all)
 

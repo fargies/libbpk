@@ -100,7 +100,7 @@ bpk *bpk_open(const char *file, int append)
         if (fd != NULL)
         {
             fseek(fd, 0, SEEK_END);
-            if ((ftell(fd) < sizeof (bpk_header)) &&
+            if ((ftell(fd) < (long) sizeof (bpk_header)) &&
                     (bpk_init_header(fd) != 0))
             {
                 fclose(fd);
@@ -295,7 +295,7 @@ bpk_type bpk_next(bpk *bpk, bpk_size *size)
 
 bpk_size bpk_read(bpk *bpk, void *buf, bpk_size size)
 {
-    if (size > (bpk->size - bpk->pos))
+    if (size > (bpk_size) (bpk->size - bpk->pos))
         size = bpk->size - bpk->pos;
 
     if (size <= 0)
