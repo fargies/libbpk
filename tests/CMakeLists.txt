@@ -9,7 +9,7 @@ include_directories(
     ${CMAKE_BINARY_DIR}
     )
 
-add_library(testHelper SHARED
+add_library(testHelper STATIC
     test_main.cpp
     )
 target_link_libraries(testHelper ${CPPUNIT_LIBRARIES})
