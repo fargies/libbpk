@@ -252,7 +252,8 @@ int main(int argc, char **argv)
             {
                 fputs("Bpk partitions:\n", stdout);
                 while ((type = bpk_next(bpk, &size)) != BPK_TYPE_INVALID)
-                    fprintf(stdout, "  %s (size: %lu)\n", get_bpk_str(type), size);
+                    fprintf(stdout, "  %s (size: %llu)\n", get_bpk_str(type),
+                            (unsigned long long) size);
             }
             else if (mode == 'k')
             {
