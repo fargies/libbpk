@@ -30,6 +30,11 @@
 extern "C" {
 #endif
 
+/**
+ * @defgroup BPK BPK
+ * @{
+ */
+
 #define BPK_TYPE_PBL 0x50424C00 /* PBL */
 #define BPK_TYPE_PBLV 0x50424C56 /* PBLV */
 #define BPK_TYPE_PKER 0x504B4552 /* PKER */
@@ -133,6 +138,10 @@ bpk_size bpk_read(bpk *bpk, void *buf, bpk_size size);
  *  - < 0 on error.
  */
 int bpk_read_file(bpk *bpk, const char *file);
+
+/**
+ * @}
+ */
 
 #if defined(__cplusplus)
 }
