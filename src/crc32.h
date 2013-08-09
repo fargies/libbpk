@@ -26,18 +26,7 @@
 
 #include <stdint.h>
 
-#define CRCPOLY_LE 0xedb88320
-
-inline uint32_t crc32_le(uint32_t crc, unsigned char const *p, size_t len)
-{
-    int i;
-    while (len--) {
-        crc ^= *p++;
-        for (i = 0; i < 8; i++)
-            crc = (crc >> 1) ^ ((crc & 1) ? CRCPOLY_LE : 0);
-    }
-    return crc;
-}
+uint32_t crc32(const void *data, size_t len, uint32_t seed); 
 
 #endif
 

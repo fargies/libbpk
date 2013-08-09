@@ -55,7 +55,6 @@ static int bpk_check_header(FILE *fd)
 
     hdr.magic = be32toh(hdr.magic);
     hdr.version = be32toh(hdr.version);
-    hdr.crc = hdr.crc;
 
     if (hdr.magic != BPK_MAGIC ||
             BPK_MAJOR(hdr.version) > BPK_MAJOR(BPK_VERSION))
@@ -143,11 +142,11 @@ static uint32_t bpk_compute_crc(bpk *bpk)
     len = fread(&hdr, 1, sizeof (bpk_header), bpk->fd);
     hdr.crc = 0;
 
-    crc = crc32_le(0, (unsigned char const *) &hdr, len);
+    crc = crc32((unsigned char const *) &hdr, len, 0);
 
     while ((len = fread(buff, 1, 2048, bpk->fd)) > 0)
     {
-        crc = crc32_le(crc, buff, len);
+        crc = crc32(buff, len, crc);
     }
     free(buff);
 
@@ -162,7 +161,7 @@ void bpk_close(bpk *bpk)
 
     if (bpk->flags & FLAG_CRC)
     {
-        uint32_t crc = bpk_compute_crc(bpk);
+        uint32_t crc = htobe32(bpk_compute_crc(bpk));
 
         fseek(bpk->fd, offsetof (bpk_header, crc), SEEK_SET);
         fwrite(&crc, 1, sizeof (uint32_t), bpk->fd);
@@ -184,14 +183,14 @@ int bpk_check_crc(bpk *bpk)
 
     bpk_header hdr;
     len = fread(&hdr, 1, sizeof (bpk_header), bpk->fd);
-    ref_crc = hdr.crc;
+    ref_crc = be32toh(hdr.crc);
     hdr.crc = 0;
 
-    crc = crc32_le(0, (const char *) &hdr, sizeof (bpk_header));
+    crc = crc32((void *) &hdr, sizeof (bpk_header), 0);
 
     while ((len = fread(buff, 1, 2048, bpk->fd)) > 0)
     {
-        crc = crc32_le(crc, buff, len);
+        crc = crc32(buff, len, crc);
     }
     free(buff);
 

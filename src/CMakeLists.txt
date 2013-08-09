@@ -3,7 +3,7 @@
 set(libbpk_SRCS
     bpk_priv.h
     bpk.c
-    crc32.h)
+    crc32.c crc32.h)
 
 set(libbpk_PUBHDRS
     bpk.h)

@@ -53,6 +53,7 @@ static void usage(FILE *out, const char *name)
     fputs("  -x, --extract     Extraction mode\n", out);
     fputs("  -l, --list        Partition listing mode\n", out);
     fputs("  -t, --list-types  List supported partition types\n", out);
+    fputs("  -k, --check       Check a bpk CRC\n", out);
     fputs("\n", out);
 }
 
@@ -138,10 +139,11 @@ int main(int argc, char **argv)
         { "extract", 0, 0, 'x' },
         { "list", 0, 0, 'l' },
         { "list-types", 0, 0, 't' },
+        { "check", 0, 0, 'k' },
         { 0, 0, 0, 0 }
     };
 
-    while ((c = getopt_long(argc, argv, "hf:p:cxlt", long_options, NULL)) != -1)
+    while ((c = getopt_long(argc, argv, "hf:p:cxltk", long_options, NULL)) != -1)
     {
         switch (c)
         {
@@ -171,6 +173,7 @@ int main(int argc, char **argv)
             case 'l':
             case 'c':
             case 't':
+            case 'k':
                 if (mode != 0)
                 {
                     fprintf(stderr, "Too many mode arguments\n");
@@ -210,6 +213,7 @@ int main(int argc, char **argv)
             break;
         case 'x':
         case 'l':
+        case 'k':
             if (file == NULL)
             {
                 fputs("File argument required\n", stderr);
@@ -249,6 +253,19 @@ int main(int argc, char **argv)
                 fputs("Bpk partitions:\n", stdout);
                 while ((type = bpk_next(bpk, &size)) != BPK_TYPE_INVALID)
                     fprintf(stdout, "  %s (size: %lu)\n", get_bpk_str(type), size);
+            }
+            else if (mode == 'k')
+            {
+                if (bpk_check_crc(bpk) != 0)
+                {
+                    fputs("KO\n", stdout);
+                    ret = EXIT_FAILURE;
+                }
+                else
+                {
+                    fputs("OK\n", stdout);
+                    ret = 0;
+                }
             }
 
             bpk_close(bpk);

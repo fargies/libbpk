@@ -1,0 +1,29 @@
+""
+"" Vim project file
+""
+"" The availability of a '.vproject' file makes the following commands
+"" available :
+""  - :Configure - configure the project
+""  - :make - compile the project
+"" 
+"" Fill the following variables in your project to configure it :
+""  - g:makeprg: program to call to compile, defaults to 'make'
+""  - g:build_dir: the directory to build the project, defaults to
+""                 '@PROJECT_DIR@/build'
+""  - g:confprg: program to call to run configure, defaults to
+""               '@PROJECT_DIR@/configure'
+""  - g:confopts: configure options, defaults to ''
+""
+"" In the configured variables '@PROJECT_DIR@' tags are replaced by the
+"" directory path where the '.vproject' file was found.
+""
+"" Configure and compile commands are run in the build directory.
+""
+
+let g:makeprg='make -s -j5'
+let g:build_dir='@PROJECT_DIR@/build'
+let g:confprg='cmake @PROJECT_DIR@'
+let g:confopts=''
+
+" vim:set ft=vim:
+
