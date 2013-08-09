@@ -43,6 +43,8 @@ class opsTest : public CppUnit::TestFixture
     CPPUNIT_TEST(create);
     CPPUNIT_TEST(read);
     CPPUNIT_TEST(find);
+    CPPUNIT_TEST(crc);
+    CPPUNIT_TEST(append);
     CPPUNIT_TEST_SUITE_END();
 
 public:
@@ -150,6 +152,51 @@ protected:
                 bpk_find(m_bpk, BPK_TYPE_PRFS, &size));
         CPPUNIT_ASSERT_EQUAL(0,
                 bpk_find(m_bpk, BPK_TYPE_PBL, &size));
+        bpk_close(m_bpk);
+        m_bpk = NULL;
+    }
+
+    void crc()
+    {
+        create();
+
+        m_bpk = bpk_open(m_file, 0);
+        CPPUNIT_ASSERT_EQUAL(0, bpk_check_crc(m_bpk));
+        bpk_close(m_bpk);
+
+        FILE *fd = fopen(m_file, "r+");
+        CPPUNIT_ASSERT(fd);
+        fseek(fd, 42, SEEK_SET);
+        fwrite("test", 4, 1, fd);
+        fclose(fd);
+
+        m_bpk = bpk_open(m_file, 0);
+        CPPUNIT_ASSERT(m_bpk);
+        CPPUNIT_ASSERT(bpk_check_crc(m_bpk) != 0);
+        bpk_close(m_bpk);
+        m_bpk = NULL;
+    }
+
+    void append()
+    {
+        m_bpk = bpk_create(m_file);
+        CPPUNIT_ASSERT(m_bpk);
+
+        CPPUNIT_ASSERT_EQUAL(0,
+                bpk_write(m_bpk, BPK_TYPE_PBL, m_data));
+        CPPUNIT_ASSERT_EQUAL(0,
+                bpk_write(m_bpk, BPK_TYPE_PBLV, m_data));
+        bpk_close(m_bpk);
+
+        m_bpk = bpk_open(m_file, 1);
+        CPPUNIT_ASSERT_EQUAL(0,
+                bpk_write(m_bpk, BPK_TYPE_PRFS, m_data));
+        bpk_close(m_bpk);
+
+        m_bpk = bpk_open(m_file, 1);
+        CPPUNIT_ASSERT_EQUAL(0, bpk_check_crc(m_bpk));
+        CPPUNIT_ASSERT_EQUAL(0,
+                bpk_find(m_bpk, BPK_TYPE_PRFS, NULL));
         bpk_close(m_bpk);
         m_bpk = NULL;
     }

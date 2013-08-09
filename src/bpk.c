@@ -65,7 +65,7 @@ static int bpk_check_header(FILE *fd)
 bpk *bpk_create(const char *file)
 {
     bpk *ret;
-    FILE *fd = fopen(file, "w");
+    FILE *fd = fopen(file, "w+");
 
     if (fd == NULL)
         return NULL;
