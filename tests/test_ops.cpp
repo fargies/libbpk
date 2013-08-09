@@ -34,8 +34,8 @@
 
 #include "bpk.h"
 
-#define SZ_1M (1024 * 1024)
-#define SZ_512K (512 * 1024)
+#define SZ_1K (1024)
+#define SZ_512 (512)
 
 class opsTest : public CppUnit::TestFixture
 {
@@ -57,7 +57,7 @@ public:
         mktemp(m_data);
         int fd = creat(m_data, S_IRWXU);
         CPPUNIT_ASSERT(fd >= 0);
-        ftruncate(fd, SZ_1M * 2);
+        ftruncate(fd, SZ_1K * 2);
         close(fd);
     }
 
@@ -111,18 +111,18 @@ protected:
 
         CPPUNIT_ASSERT_EQUAL((bpk_type) BPK_TYPE_PBLV,
                 bpk_next(m_bpk, &size));
-        CPPUNIT_ASSERT_EQUAL((bpk_size) SZ_1M * 2, size);
-        char *buf = (char *) malloc(SZ_1M);
+        CPPUNIT_ASSERT_EQUAL((bpk_size) SZ_1K * 2, size);
+        char *buf = (char *) malloc(SZ_1K);
 
         try
         {
-            CPPUNIT_ASSERT_EQUAL((bpk_size) SZ_1M,
-                    bpk_read(m_bpk, buf, SZ_1M));
-            CPPUNIT_ASSERT_EQUAL((bpk_size) SZ_512K,
-                    bpk_read(m_bpk, buf, SZ_512K));
+            CPPUNIT_ASSERT_EQUAL((bpk_size) SZ_1K,
+                    bpk_read(m_bpk, buf, SZ_1K));
+            CPPUNIT_ASSERT_EQUAL((bpk_size) SZ_512,
+                    bpk_read(m_bpk, buf, SZ_512));
 
-            CPPUNIT_ASSERT_EQUAL((bpk_size) SZ_512K,
-                    bpk_read(m_bpk, buf, SZ_1M));
+            CPPUNIT_ASSERT_EQUAL((bpk_size) SZ_512,
+                    bpk_read(m_bpk, buf, SZ_1K));
         }
         catch (std::exception &e)
         {
