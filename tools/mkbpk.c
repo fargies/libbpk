@@ -126,10 +126,7 @@ int main(int argc, char **argv)
 {
     char mode = 0;
     const char *file = NULL;
-
     struct parthead parts;
-    STAILQ_INIT(&parts);
-
     int c;
     struct option long_options[] = {
         { "help", 0, 0, 'h' },
@@ -142,6 +139,13 @@ int main(int argc, char **argv)
         { "check", 0, 0, 'k' },
         { 0, 0, 0, 0 }
     };
+
+    bpk *bpk;
+    bpk_size size;
+    bpk_type type;
+    int ret;
+
+    STAILQ_INIT(&parts);
 
     while ((c = getopt_long(argc, argv, "hf:p:cxltk", long_options, NULL)) != -1)
     {
@@ -191,10 +195,7 @@ int main(int argc, char **argv)
         }
     }
 
-    bpk *bpk;
-    bpk_size size;
-    bpk_type type;
-    int ret = 0;
+    ret = 0;
 
     switch (mode)
     {
@@ -252,8 +253,8 @@ int main(int argc, char **argv)
             {
                 fputs("Bpk partitions:\n", stdout);
                 while ((type = bpk_next(bpk, &size)) != BPK_TYPE_INVALID)
-                    fprintf(stdout, "  %s (size: %llu)\n", get_bpk_str(type),
-                            (unsigned long long) size);
+                    fprintf(stdout, "  %s (size: %lu)\n", get_bpk_str(type),
+                            (unsigned long) size);
             }
             else if (mode == 'k')
             {

@@ -71,6 +71,8 @@ bpk *bpk_create(const char *file)
         return NULL;
 
     ret = malloc(sizeof (bpk));
+    if (ret == NULL)
+        return NULL;
 
     ret->fd = fd;
     ret->pos = ret->size = 0;
@@ -122,6 +124,9 @@ bpk *bpk_open(const char *file, int append)
     }
 
     ret = malloc(sizeof (bpk));
+    if (ret == NULL)
+        return NULL;
+
     ret->fd = fd;
     ret->pos = ret->size = 0;
     ret->flags = (append) ? FLAG_CRC : 0;
@@ -131,14 +136,19 @@ bpk *bpk_open(const char *file, int append)
 
 static uint32_t bpk_compute_crc(bpk *bpk)
 {
-    long pos = ftell(bpk->fd);
-    fseek(bpk->fd, 0, SEEK_SET);
-
-    char *buff = malloc(2048);
+    long pos;
+    char *buff;
     ssize_t len;
     uint32_t crc;
-
     bpk_header hdr;
+
+    buff = malloc(2048);
+    if (buff == NULL)
+        return 0xFFFFFFFF;
+
+    pos = ftell(bpk->fd);
+    fseek(bpk->fd, 0, SEEK_SET);
+
     len = fread(&hdr, 1, sizeof (bpk_header), bpk->fd);
     hdr.crc = 0;
 
@@ -156,12 +166,14 @@ static uint32_t bpk_compute_crc(bpk *bpk)
 
 void bpk_close(bpk *bpk)
 {
+    uint32_t crc;
+
     if (bpk == NULL)
         return;
 
     if (bpk->flags & FLAG_CRC)
     {
-        uint32_t crc = htobe32(bpk_compute_crc(bpk));
+        crc = htobe32(bpk_compute_crc(bpk));
 
         fseek(bpk->fd, offsetof (bpk_header, crc), SEEK_SET);
         fwrite(&crc, 1, sizeof (uint32_t), bpk->fd);
@@ -173,15 +185,20 @@ void bpk_close(bpk *bpk)
 
 int bpk_check_crc(bpk *bpk)
 {
-    long pos = ftell(bpk->fd);
-    fseek(bpk->fd, 0, SEEK_SET);
-
-    char *buff = malloc(2048);
+    long pos;
+    char *buff;
     size_t len;
     uint32_t crc;
     uint32_t ref_crc;
-
     bpk_header hdr;
+
+    buff = malloc(2048);
+    if (buff == NULL)
+        return -1;
+
+    pos = ftell(bpk->fd);
+    fseek(bpk->fd, 0, SEEK_SET);
+
     len = fread(&hdr, 1, sizeof (bpk_header), bpk->fd);
     ref_crc = be32toh(hdr.crc);
     hdr.crc = 0;
@@ -201,16 +218,19 @@ int bpk_check_crc(bpk *bpk)
 int bpk_write(bpk *bpk, bpk_type type, const char *file)
 {
     struct stat st;
+    char *buff;
+    size_t len;
+    FILE *fd_in;
+    bpk_part part;
 
     if (stat(file, &st) != 0)
         return -1;
 
-    bpk_part part;
     part.type = htobe32(type);
     part.spare = 0;
     part.size = htobe64(st.st_size);
 
-    FILE *fd_in = fopen(file, "r");
+    fd_in = fopen(file, "r");
     if (fd_in == NULL)
         return -1;
 
@@ -220,8 +240,12 @@ int bpk_write(bpk *bpk, bpk_type type, const char *file)
         return -2;
     }
 
-    char *buff = malloc(2048);
-    size_t len;
+    buff = malloc(2048);
+    if (buff == NULL)
+    {
+        fclose(fd_in);
+        return -5;
+    }
 
     while ((len = fread(buff, 1, 2048, fd_in)) > 0)
     {
@@ -308,13 +332,21 @@ bpk_size bpk_read(bpk *bpk, void *buf, bpk_size size)
 
 int bpk_read_file(bpk *bpk, const char *file)
 {
-    FILE *fd_out = fopen(file, "w");
+    FILE *fd_out;
+    char *buff;
+    size_t len;
+    bpk_size size = bpk->size - bpk->pos;
+
+    fd_out = fopen(file, "w");
     if (fd_out == NULL)
         return -1;
 
-    char *buff = malloc(2048);
-    size_t len;
-    bpk_size size = bpk->size - bpk->pos;
+    buff = malloc(2048);
+    if (buff == NULL)
+    {
+        fclose(fd_out);
+        return -2;
+    }
 
     while (size != 0)
     {

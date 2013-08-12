@@ -43,8 +43,8 @@ configure_file("libbpk.pc.in" "libbpk.pc" @ONLY)
 install(FILES ${CMAKE_BINARY_DIR}/libbpk.pc
     DESTINATION lib/pkgconfig COMPONENT devel)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -W -Wall -Wextra")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -W -Wall -Wextra")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -W -Wall -Wextra -pedantic")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -W -Wall -Wextra -pedantic")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wnon-virtual-dtor -Woverloaded-virtual -Wunused-parameter -Wuninitialized")
 
 add_subdirectory(src)
