@@ -152,7 +152,7 @@ static uint32_t bpk_compute_crc(bpk *bpk)
     len = fread(&hdr, 1, sizeof (bpk_header), bpk->fd);
     hdr.crc = 0;
 
-    crc = crc32((unsigned char const *) &hdr, len, 0);
+    crc = crc32((unsigned char const *) &hdr, len, BPK_CRC_SEED);
 
     while ((len = fread(buff, 1, 2048, bpk->fd)) > 0)
     {
@@ -203,7 +203,7 @@ int bpk_check_crc(bpk *bpk)
     ref_crc = be32toh(hdr.crc);
     hdr.crc = 0;
 
-    crc = crc32((void *) &hdr, sizeof (bpk_header), 0);
+    crc = crc32((void *) &hdr, sizeof (bpk_header), BPK_CRC_SEED);
 
     while ((len = fread(buff, 1, 2048, bpk->fd)) > 0)
     {

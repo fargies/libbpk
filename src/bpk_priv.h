@@ -34,6 +34,8 @@
 
 #define FLAG_CRC 0x01 /* compute crc when closing the file */
 
+#define BPK_CRC_SEED 0xFFFFFFFFU
+
 typedef struct __attribute__((packed)) {
     uint32_t magic;
     uint32_t version;
