@@ -6,7 +6,7 @@ includedir=${prefix}/include/@PROJECT_NAME@
 Name: @PROJECT_NAME@
 Description: BPK file managment library
 URL: http://www.somfy.com
-Version: @PACKAGE_VERSION@
+Version: @libbpk_VERSION@
 Requires:
 Libs: -L${libdir} -lbpk
 Cflags: -I${includedir}
