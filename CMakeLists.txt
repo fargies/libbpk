@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 
-project(libbpk C CXX)
+project(libbpk C)
 
 include(GitVersion.cmake)
 
@@ -21,6 +21,7 @@ if (COVERAGE)
 endif(COVERAGE)
 
 if (TESTS)
+    enable_language(CXX)
     include(FindPkgConfig)
     pkg_check_modules(CPPUNIT cppunit)
     if (NOT CPPUNIT_FOUND)
