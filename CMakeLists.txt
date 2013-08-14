@@ -38,7 +38,7 @@ endif (TESTS)
 
 include(Dependencies.cmake)
 
-configure_file("config.h.in" "config.h")
+configure_file("src/bpk-config.h.in" "src/bpk-config.h")
 configure_file("version.h.in" "version.h")
 
 configure_file("libbpk.pc.in" "libbpk.pc" @ONLY)

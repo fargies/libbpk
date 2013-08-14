@@ -1,4 +1,7 @@
 
+include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR})
+
 set(libbpk_SRCS
     bpk_priv.h
     bpk.c
@@ -7,7 +10,7 @@ set(libbpk_SRCS
 set(libbpk_PUBHDRS
     bpk.h)
 
-add_library(bpk SHARED
+add_library(bpk
     ${libbpk_SRCS} ${libbpk_PUBHDRS})
 set_target_properties(bpk PROPERTIES
     PUBLIC_HEADER ${libbpk_PUBHDRS})

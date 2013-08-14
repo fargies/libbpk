@@ -22,7 +22,6 @@
 */
 
 #include <stddef.h>
-#include <endian.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -31,6 +30,7 @@
 #include "bpk.h"
 #include "bpk_priv.h"
 #include "crc32.h"
+#include "compat/endian.h"
 
 static int bpk_init_header(FILE *fd)
 {

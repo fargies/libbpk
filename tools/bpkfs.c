@@ -33,13 +33,13 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <sys/queue.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
 #include "bpk.h"
 #include "bpk_priv.h"
 #include "bpkfs.h"
+#include "compat/queue.h"
 
 struct part
 {

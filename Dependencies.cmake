@@ -14,3 +14,9 @@ if (BPKFS)
     string(REPLACE ";" " " FUSE_CFLAGS "${FUSE_CFLAGS}")
 endif (BPKFS)
 
+include(CheckIncludeFile)
+CHECK_INCLUDE_FILE(sys/queue.h HAVE_SYS_QUEUE)
+
+include(CheckSymbolExists)
+CHECK_SYMBOL_EXISTS(htobe32 endian.h HAVE_ENDIAN_FUNCS)
+

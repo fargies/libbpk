@@ -25,10 +25,10 @@
 #include <getopt.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <sys/queue.h>
 #include <string.h>
 
 #include "bpk.h"
+#include "compat/queue.h"
 
 static const struct {
     const char *str;
