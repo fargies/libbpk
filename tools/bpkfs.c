@@ -210,7 +210,9 @@ static int bpkfs_read(
     {
         if (strcmp(path, part->file) == 0)
         {
-            if (offset >= part->size)
+            if (offset < 0)
+                return -EINVAL;
+            if ((bpk_size) offset >= part->size)
                 return 0;
             else if (offset + size > part->size)
                 size = part->size - offset;
