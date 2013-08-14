@@ -23,7 +23,7 @@ if (BPKFS)
     add_executable(bpkfs
         ${bpkfs_SRCS})
     target_link_libraries(bpkfs
-        bpk ${FUSE_LIBRARIES})
+        bpk ${FUSE_LIBRARIES} pthread)
     set_target_properties(bpkfs PROPERTIES
         COMPILE_FLAGS "${FUSE_CFLAGS_OTHER}"
         PUBLIC_HEADER "bpkfs.h")
