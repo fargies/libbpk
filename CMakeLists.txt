@@ -13,6 +13,13 @@ option(TOOLS "Compile command line tools" ON)
 option(BPKFS "Compile bpkfs (FUSE module)" OFF)
 option(TESTS "Compile and run unit tests" OFF)
 
+option(SHARED "Compile a shared library" ON)
+if (SHARED)
+    set(BUILD_SHARED_LIBS True)
+else (SHARED)
+    set(BUILD_SHARED_LIBS False)
+endif (SHARED)
+
 option(COVERAGE "Enable gcov code coverage" OFF)
 if (COVERAGE)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage")
