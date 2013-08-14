@@ -119,6 +119,12 @@ int bpk_find(bpk *bpk, bpk_type type, bpk_size *size);
 bpk_type bpk_next(bpk *bpk, bpk_size *size);
 
 /**
+ * @brief move back to the first partition.
+ * @param[in] bpk the bpk file to seek.
+ */
+void bpk_rewind(bpk *bpk);
+
+/**
  * @brief reads some part of a bpk file.
  * @param[in] bpk the bpk to read.
  * @param[out] buf the buffer to fill.

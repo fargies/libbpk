@@ -4,13 +4,29 @@ link_directories(
 include_directories(
     ${CMAKE_SOURCE_DIR}/src)
 
-set(mkbpk_SRCS
-    mkbpk.c)
+if (TOOLS)
+    set(mkbpk_SRCS
+        mkbpk.c)
 
-add_executable(mkbpk
-    ${mkbpk_SRCS})
-target_link_libraries(mkbpk
-    bpk)
-install(TARGETS mkbpk
-    RUNTIME DESTINATION bin COMPONENT Runtime)
+    add_executable(mkbpk
+        ${mkbpk_SRCS})
+    target_link_libraries(mkbpk
+        bpk)
+    install(TARGETS mkbpk
+        RUNTIME DESTINATION bin COMPONENT Runtime)
+endif (TOOLS)
+
+if (BPKFS)
+    set(bpkfs_SRCS
+        bpkfs.c bpkfs.h)
+
+    add_executable(bpkfs
+        ${bpkfs_SRCS})
+    target_link_libraries(bpkfs
+        bpk ${FUSE_LIBRARIES})
+    set_target_properties(bpkfs PROPERTIES
+        COMPILE_FLAGS "${FUSE_CFLAGS_OTHER}")
+    install(TARGETS bpkfs
+        RUNTIME DESTINATION bin COMPONENT Runtime)
+endif (BPKFS)
 

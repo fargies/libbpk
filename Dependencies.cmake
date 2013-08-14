@@ -8,3 +8,9 @@ if (TOOLS)
     endif (NOT HAVE_GETOPT_LONG)
 endif (TOOLS)
 
+if (BPKFS)
+    include(FindPkgConfig)
+    pkg_check_modules(FUSE REQUIRED fuse)
+    string(REPLACE ";" " " FUSE_CFLAGS "${FUSE_CFLAGS}")
+endif (BPKFS)
+

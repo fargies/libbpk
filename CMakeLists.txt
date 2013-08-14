@@ -10,6 +10,7 @@ set(libbpk_VER_PATCH "${GIT_COUNT}")
 set(libbpk_VERSION "${libbpk_VER_MAJOR}.${libbpk_VER_MINOR}.${libbpk_VER_PATCH}")
 
 option(TOOLS "Compile command line tools" ON)
+option(BPKFS "Compile bpkfs (FUSE module)" OFF)
 option(TESTS "Compile and run unit tests" OFF)
 
 option(COVERAGE "Enable gcov code coverage" OFF)

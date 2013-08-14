@@ -281,8 +281,7 @@ int bpk_find(bpk *bpk, bpk_type type, bpk_size *size)
 {
     bpk_part part;
 
-    fseek(bpk->fd, sizeof (bpk_header), SEEK_SET);
-    bpk->pos = bpk->size = 0;
+    bpk_rewind(bpk);
 
     while (bpk_read_part(bpk, &part) == 0)
     {
@@ -315,6 +314,12 @@ bpk_type bpk_next(bpk *bpk, bpk_size *size)
         return part.type;
     }
     return BPK_TYPE_INVALID;
+}
+
+void bpk_rewind(bpk *bpk)
+{
+    fseek(bpk->fd, sizeof (bpk_header), SEEK_SET);
+    bpk->pos = bpk->size = 0;
 }
 
 bpk_size bpk_read(bpk *bpk, void *buf, bpk_size size)
