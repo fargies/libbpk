@@ -25,8 +25,10 @@ if (BPKFS)
     target_link_libraries(bpkfs
         bpk ${FUSE_LIBRARIES})
     set_target_properties(bpkfs PROPERTIES
-        COMPILE_FLAGS "${FUSE_CFLAGS_OTHER}")
+        COMPILE_FLAGS "${FUSE_CFLAGS_OTHER}"
+        PUBLIC_HEADER "bpkfs.h")
     install(TARGETS bpkfs
-        RUNTIME DESTINATION bin COMPONENT Runtime)
+        RUNTIME DESTINATION bin COMPONENT Runtime
+        PUBLIC_HEADER DESTINATION include/${PROJECT_NAME} COMPONENT Devel)
 endif (BPKFS)
 
