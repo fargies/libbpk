@@ -28,5 +28,7 @@
 
 #cmakedefine HAVE_SYS_QUEUE
 
+#cmakedefine HAVE_ENDIAN_FUNCS
+
 #endif /* __CONFIG_H__ */
 
