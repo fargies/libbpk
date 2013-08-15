@@ -38,7 +38,7 @@
 #include <list>
 #include <iostream>
 
-#include "config.h"
+#include "bpk-config.h"
 
 #ifdef HAVE_GETOPT_LONG
 #include <getopt.h>

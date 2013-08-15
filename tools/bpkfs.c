@@ -214,7 +214,7 @@ static int bpkfs_read(
                 return -EINVAL;
             if ((bpk_size) offset >= part->size)
                 return 0;
-            else if (offset + size > part->size)
+            else if ((bpk_size) (offset + size) > part->size)
                 size = part->size - offset;
 
             return pread(fileno(config.bpk->fd), buf, size, offset + part->offset);
