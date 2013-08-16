@@ -32,13 +32,14 @@
 
 #define BPK_MAGIC 0x534F4659 /* SOFY */
 
-#define FLAG_CRC 0x01 /* compute crc when closing the file */
+#define FLAG_CRC 0x01 /* compute crc and len when closing the file */
 
 #define BPK_CRC_SEED 0xFFFFFFFFU
 
 typedef struct __attribute__((packed)) {
     uint32_t magic;
     uint32_t version;
+    uint64_t size;
     uint32_t crc;
     uint64_t spare;
 } bpk_header;
@@ -50,10 +51,11 @@ typedef struct __attribute__((packed)) {
 } bpk_part;
 
 struct bpk {
-    FILE *fd;
-    off_t pos;
-    off_t size;
-    uint8_t flags;
+    FILE *fd; /**! bpk filedescriptor */
+    off_t ppos; /**!< position in the current partition */
+    off_t psize; /**!< size of the current partition */
+    off_t size; /**!< total size of the bpk file */
+    uint8_t flags; /**!< internal flags */
 };
 
 #endif

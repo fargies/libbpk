@@ -45,6 +45,7 @@ class opsTest : public CppUnit::TestFixture
     CPPUNIT_TEST(find);
     CPPUNIT_TEST(crc);
     CPPUNIT_TEST(append);
+    CPPUNIT_TEST(bigfile);
     CPPUNIT_TEST_SUITE_END();
 
 public:
@@ -197,6 +198,30 @@ protected:
         CPPUNIT_ASSERT_EQUAL(0, bpk_check_crc(m_bpk));
         CPPUNIT_ASSERT_EQUAL(0,
                 bpk_find(m_bpk, BPK_TYPE_PRFS, NULL));
+        bpk_close(m_bpk);
+        m_bpk = NULL;
+    }
+
+    void bigfile()
+    {
+        create();
+
+        FILE *fd = fopen(m_file, "a");
+        CPPUNIT_ASSERT(fd);
+        for (int i = 0; i < 1000; ++i)
+            fwrite("test", 4, 1, fd);
+        fclose(fd);
+
+        m_bpk = bpk_open(m_file, 0);
+        CPPUNIT_ASSERT(m_bpk);
+        CPPUNIT_ASSERT(bpk_check_crc(m_bpk) == 0);
+
+        int count = 0;
+        while (bpk_next(m_bpk, NULL) != BPK_TYPE_INVALID)
+            ++count;
+
+        CPPUNIT_ASSERT_EQUAL(5, count); /* must match create() */
+
         bpk_close(m_bpk);
         m_bpk = NULL;
     }

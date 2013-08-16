@@ -37,6 +37,7 @@ static int bpk_init_header(FILE *fd)
     bpk_header hdr;
     hdr.magic = htobe32(BPK_MAGIC);
     hdr.version = htobe32(BPK_VERSION);
+    hdr.size = htobe64(sizeof (bpk_header));
     hdr.crc = 0;
     hdr.spare = 0;
 
@@ -46,7 +47,7 @@ static int bpk_init_header(FILE *fd)
         return 0;
 }
 
-static int bpk_check_header(FILE *fd)
+static int bpk_check_header(FILE *fd, uint64_t *size)
 {
     bpk_header hdr;
 
@@ -55,6 +56,8 @@ static int bpk_check_header(FILE *fd)
 
     hdr.magic = be32toh(hdr.magic);
     hdr.version = be32toh(hdr.version);
+    if (size != NULL)
+        *size = be64toh(hdr.size);
 
     if (hdr.magic != BPK_MAGIC ||
             BPK_MAJOR(hdr.version) > BPK_MAJOR(BPK_VERSION))
@@ -70,20 +73,23 @@ bpk *bpk_create(const char *file)
     if (fd == NULL)
         return NULL;
 
-    ret = malloc(sizeof (bpk));
-    if (ret == NULL)
-        return NULL;
-
-    ret->fd = fd;
-    ret->pos = ret->size = 0;
-    ret->flags = FLAG_CRC;
-
     if (bpk_init_header(fd) != 0)
     {
         fclose(fd);
-        free(ret);
         return NULL;
     }
+
+    ret = malloc(sizeof (bpk));
+    if (ret == NULL)
+    {
+        fclose(fd);
+        return NULL;
+    }
+
+    ret->fd = fd;
+    ret->ppos = ret->psize = 0;
+    ret->size = sizeof (bpk_header);
+    ret->flags = FLAG_CRC;
 
     return ret;
 }
@@ -92,6 +98,7 @@ bpk *bpk_open(const char *file, int append)
 {
     bpk *ret;
     FILE *fd;
+    uint64_t size = 0;
 
     if (append)
     {
@@ -117,7 +124,7 @@ bpk *bpk_open(const char *file, int append)
 
     if (fd == NULL)
         return NULL;
-    else if (bpk_check_header(fd) != 0)
+    else if (bpk_check_header(fd, &size) != 0)
     {
         fclose(fd);
         return NULL;
@@ -128,13 +135,23 @@ bpk *bpk_open(const char *file, int append)
         return NULL;
 
     ret->fd = fd;
-    ret->pos = ret->size = 0;
+    ret->ppos = ret->psize = 0;
     ret->flags = (append) ? FLAG_CRC : 0;
+    ret->size = size;
 
     return ret;
 }
 
-static uint32_t bpk_compute_crc(bpk *bpk)
+/**
+ * @brief compute the file's crc.
+ *
+ * @param[in] bpk the bpk file.
+ * @param[out] file_crc the crc written in the file's header.
+ * @return
+ *  - the computed crc.
+ *  - 0xFFFFFFFF on error.
+ */
+static uint32_t bpk_compute_crc(bpk *bpk, uint32_t *file_crc)
 {
     long pos;
     char *buff;
@@ -150,31 +167,45 @@ static uint32_t bpk_compute_crc(bpk *bpk)
     fseek(bpk->fd, 0, SEEK_SET);
 
     len = fread(&hdr, 1, sizeof (bpk_header), bpk->fd);
+    if (file_crc != NULL)
+        *file_crc = be32toh(hdr.crc);
     hdr.crc = 0;
 
     crc = crc32((unsigned char const *) &hdr, len, BPK_CRC_SEED);
+    hdr.size = be64toh(hdr.size) - sizeof (bpk_header);
 
-    while ((len = fread(buff, 1, 2048, bpk->fd)) > 0)
+    while (hdr.size != 0)
     {
+        len = (hdr.size > 2048) ? 2048 : hdr.size;
+
+        len = fread(buff, 1, len, bpk->fd);
+        if (len <= 0)
+            break;
+
+        hdr.size -= len;
         crc = crc32(buff, len, crc);
     }
     free(buff);
 
     fseek(bpk->fd, pos, SEEK_SET);
-    return crc;
+    return (hdr.size == 0) ? crc : 0xFFFFFFFF;
 }
 
 void bpk_close(bpk *bpk)
 {
     uint32_t crc;
+    uint64_t size;
 
     if (bpk == NULL)
         return;
 
     if (bpk->flags & FLAG_CRC)
     {
-        crc = htobe32(bpk_compute_crc(bpk));
+        size = htobe64(bpk->size);
+        fseek(bpk->fd, offsetof (bpk_header, size), SEEK_SET);
+        fwrite(&size, 1, sizeof (uint64_t), bpk->fd);
 
+        crc = htobe32(bpk_compute_crc(bpk, NULL));
         fseek(bpk->fd, offsetof (bpk_header, crc), SEEK_SET);
         fwrite(&crc, 1, sizeof (uint32_t), bpk->fd);
     }
@@ -185,34 +216,12 @@ void bpk_close(bpk *bpk)
 
 int bpk_check_crc(bpk *bpk)
 {
-    long pos;
-    char *buff;
-    size_t len;
     uint32_t crc;
     uint32_t ref_crc;
-    bpk_header hdr;
 
-    buff = malloc(2048);
-    if (buff == NULL)
-        return -1;
+    crc = bpk_compute_crc(bpk, &ref_crc);
 
-    pos = ftell(bpk->fd);
-    fseek(bpk->fd, 0, SEEK_SET);
-
-    len = fread(&hdr, 1, sizeof (bpk_header), bpk->fd);
-    ref_crc = be32toh(hdr.crc);
-    hdr.crc = 0;
-
-    crc = crc32((void *) &hdr, sizeof (bpk_header), BPK_CRC_SEED);
-
-    while ((len = fread(buff, 1, 2048, bpk->fd)) > 0)
-    {
-        crc = crc32(buff, len, crc);
-    }
-    free(buff);
-
-    fseek(bpk->fd, pos, SEEK_SET);
-    return (crc == ref_crc) ? 0 : -1;
+    return ((crc != 0xFFFFFFFF) && (crc == ref_crc)) ? 0 : -1;
 }
 
 int bpk_write(bpk *bpk, bpk_type type, const char *file)
@@ -234,11 +243,13 @@ int bpk_write(bpk *bpk, bpk_type type, const char *file)
     if (fd_in == NULL)
         return -1;
 
+    fseek(bpk->fd, bpk->size, SEEK_SET);
     if (fwrite(&part, sizeof (bpk_part), 1, bpk->fd) != 1)
     {
         fclose(fd_in);
         return -2;
     }
+    bpk->size += sizeof (bpk_part);
 
     buff = malloc(2048);
     if (buff == NULL)
@@ -255,6 +266,7 @@ int bpk_write(bpk *bpk, bpk_type type, const char *file)
             free(buff);
             return -3;
         }
+        bpk->size += len;
     }
     free(buff);
     if (ferror(fd_in) != 0)
@@ -263,12 +275,15 @@ int bpk_write(bpk *bpk, bpk_type type, const char *file)
         return -4;
     }
     fclose(fd_in);
-    bpk->pos = bpk->size = 0;
+    bpk->ppos = bpk->psize = 0;
     return 0;
 }
 
 static int bpk_read_part(bpk *bpk, bpk_part *part)
 {
+    if (ftell(bpk->fd) >= bpk->size)
+        return -1;
+
     if (fread(part, sizeof (bpk_part), 1, bpk->fd) != 1)
         return -1;
 
@@ -289,8 +304,8 @@ int bpk_find(bpk *bpk, bpk_type type, bpk_size *size)
         {
             if (size != NULL)
                 *size = part.size;
-            bpk->pos = 0;
-            bpk->size = part.size;
+            bpk->ppos = 0;
+            bpk->psize = part.size;
             return 0;
         }
         fseek(bpk->fd, part.size, SEEK_CUR);
@@ -302,15 +317,15 @@ bpk_type bpk_next(bpk *bpk, bpk_size *size)
 {
     bpk_part part;
 
-    if (bpk->size != 0)
-        fseek(bpk->fd, bpk->size - bpk->pos, SEEK_CUR);
+    if (bpk->psize != 0)
+        fseek(bpk->fd, bpk->psize - bpk->ppos, SEEK_CUR);
 
     if (bpk_read_part(bpk, &part) == 0)
     {
         if (size != NULL)
             *size = part.size;
-        bpk->pos = 0;
-        bpk->size = part.size;
+        bpk->ppos = 0;
+        bpk->psize = part.size;
         return part.type;
     }
     return BPK_TYPE_INVALID;
@@ -319,19 +334,19 @@ bpk_type bpk_next(bpk *bpk, bpk_size *size)
 void bpk_rewind(bpk *bpk)
 {
     fseek(bpk->fd, sizeof (bpk_header), SEEK_SET);
-    bpk->pos = bpk->size = 0;
+    bpk->ppos = bpk->psize = 0;
 }
 
 bpk_size bpk_read(bpk *bpk, void *buf, bpk_size size)
 {
-    if (size > (bpk_size) (bpk->size - bpk->pos))
-        size = bpk->size - bpk->pos;
+    if (size > (bpk_size) (bpk->psize - bpk->ppos))
+        size = bpk->psize - bpk->ppos;
 
     if (size <= 0)
         return 0;
 
     size = fread(buf, 1, size, bpk->fd);
-    bpk->pos += size;
+    bpk->ppos += size;
     return size;
 }
 
@@ -340,7 +355,7 @@ int bpk_read_file(bpk *bpk, const char *file)
     FILE *fd_out;
     char *buff;
     size_t len;
-    bpk_size size = bpk->size - bpk->pos;
+    bpk_size size = bpk->psize - bpk->ppos;
 
     fd_out = fopen(file, "w");
     if (fd_out == NULL)
@@ -362,7 +377,7 @@ int bpk_read_file(bpk *bpk, const char *file)
             break;
 
         size -= len;
-        bpk->pos += len;
+        bpk->ppos += len;
 
         if (fwrite(buff, len, 1, fd_out) != 1)
         {
@@ -378,7 +393,7 @@ int bpk_read_file(bpk *bpk, const char *file)
         return -4;
     }
     fclose(fd_out);
-    bpk->pos = bpk->size = 0;
+    bpk->ppos = bpk->psize = 0;
     return 0;
 }
 
