@@ -144,11 +144,15 @@ int main(int argc, char **argv)
     bpk_size size;
     bpk_type type;
     int ret;
+    int index = 0;
 
     STAILQ_INIT(&parts);
 
-    while ((c = getopt_long(argc, argv, "hf:p:cxltk", long_options, NULL)) != -1)
+    while ((c = getopt_long(argc, argv, "-hf:p:cxltk", long_options, &index)) != -1)
     {
+        if (c == 1)
+            c = (strchr(optarg, ':') != NULL) ? 'p' : 'f';
+
         switch (c)
         {
             case 'h':
@@ -190,6 +194,7 @@ int main(int argc, char **argv)
                 exit(EXIT_FAILURE);
             case '?':
             default:
+                fprintf(stderr, "%c\n", optopt);
                 usage(stderr, argv[0]);
                 exit(EXIT_FAILURE);
         }
@@ -300,6 +305,9 @@ int main(int argc, char **argv)
             }
             bpk_close(bpk);
             break;
+        default:
+            usage(stderr, argv[0]);
+            exit(EXIT_FAILURE);
     }
 
     while (!STAILQ_EMPTY(&parts))
