@@ -6,7 +6,7 @@ link_directories(
     )
 include_directories(
     ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_BINARY_DIR}
+    ${CMAKE_BINARY_DIR}/src
     )
 
 add_library(testHelper STATIC
