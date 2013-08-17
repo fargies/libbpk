@@ -283,7 +283,7 @@ int main(int argc, char **argv)
                 fputs("File argument required\n", stderr);
                 exit(EXIT_FAILURE);
             }
-            bpk = bpk_open(file, 1);
+            bpk = bpk_create(file);
             if (bpk == NULL)
             {
                 fprintf(stderr, "Failed to create file: %s\n", file);
