@@ -40,6 +40,7 @@ class crcTest : public CppUnit::TestFixture
 {
     CPPUNIT_TEST_SUITE(crcTest);
     CPPUNIT_TEST(simple);
+    CPPUNIT_TEST(data_crc);
     CPPUNIT_TEST_SUITE_END();
 
 public:
@@ -87,14 +88,6 @@ protected:
 
         CPPUNIT_ASSERT_EQUAL(0,
                 bpk_write(m_bpk, BPK_TYPE_PBL, m_data));
-        CPPUNIT_ASSERT_EQUAL(0,
-                bpk_write(m_bpk, BPK_TYPE_PBLV, m_data));
-        CPPUNIT_ASSERT_EQUAL(0,
-                bpk_write(m_bpk, BPK_TYPE_PKER, m_data));
-        CPPUNIT_ASSERT_EQUAL(0,
-                bpk_write(m_bpk, BPK_TYPE_PRFS, m_data));
-        CPPUNIT_ASSERT_EQUAL(0,
-                bpk_write(m_bpk, 42, m_data));
         bpk_close(m_bpk);
         m_bpk = NULL;
     }
@@ -112,12 +105,16 @@ protected:
         bpk_close(m_bpk);
         m_bpk = NULL;
 
+        /* uncomment to display cksfv crc */
+        /*
+        truncate(m_file, sizeof (bpk_header) + sizeof (bpk_part));
         int fd = open(m_file, O_RDWR);
         CPPUNIT_ASSERT(fd >= 0);
         lseek(fd, offsetof (bpk_header, crc), SEEK_SET);
         file_crc = 0;
         write(fd, &file_crc, sizeof (file_crc));
         close(fd);
+
 
         fd = mkstemp(m_sfv);
         CPPUNIT_ASSERT(fd >= 0);
@@ -132,7 +129,45 @@ protected:
             NULL
         };
         CPPUNIT_ASSERT_EQUAL(0, spawn(argv, NULL));
+        */
+        CPPUNIT_ASSERT_EQUAL((uint32_t) 0x1dbd85f4, crc);
 
+    }
+
+    void data_crc()
+    {
+        uint32_t crc;
+        uint32_t crc2;
+        create();
+
+        m_bpk = bpk_open(m_file, 0);
+        
+        CPPUNIT_ASSERT(bpk_find(m_bpk, BPK_TYPE_PBL, NULL, &crc) == 0);
+        bpk_rewind(m_bpk);
+        CPPUNIT_ASSERT(bpk_next(m_bpk, NULL, &crc2) != BPK_TYPE_INVALID);
+
+        CPPUNIT_ASSERT_EQUAL(crc, crc2);
+
+        bpk_close(m_bpk);
+        m_bpk = NULL;
+
+        /* uncomment to display cksfv crc */
+        /*
+        int fd = mkstemp(m_sfv);
+        CPPUNIT_ASSERT(fd >= 0);
+        dprintf(fd, "%s %.8x\n", m_data, crc);
+        close(fd);
+
+        const char *argv[] = {
+            "/usr/bin/cksfv",
+            m_data,
+            "-f",
+            m_sfv,
+            NULL
+        };
+        CPPUNIT_ASSERT_EQUAL(0, spawn(argv, NULL));
+        */
+        CPPUNIT_ASSERT_EQUAL((uint32_t) 0xf1e8ba9e, crc);
     }
 };
 CPPUNIT_TEST_SUITE_REGISTRATION(crcTest);

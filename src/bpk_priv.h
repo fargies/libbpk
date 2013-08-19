@@ -46,8 +46,9 @@ typedef struct __attribute__((packed)) {
 
 typedef struct __attribute__((packed)) {
     bpk_type type;
-    uint32_t spare;
     bpk_size size;
+    uint32_t crc;
+    uint64_t spare;
 } bpk_part;
 
 struct bpk {

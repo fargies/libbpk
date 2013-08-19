@@ -41,10 +41,17 @@
 #include "bpkfs.h"
 #include "compat/queue.h"
 
+#define SFV_SUFF ".sfv"
+#define SFV_SUFF_LEN 4
+
+/* ' ' + crc + '\n' */
+#define SFV_CRC_LEN (1 + 8 + 1)
+
 struct part
 {
     bpk_type type;
     const char *file;
+    uint32_t crc;
     bpk_size size;
     off_t offset;
     STAILQ_ENTRY(part) parts;
@@ -63,6 +70,7 @@ static int bpkfs_init(struct bpk_config *conf)
 {
     bpk_type type;
     bpk_size size;
+    uint32_t crc;
     struct part *p;
 
     if (conf == NULL || conf->path == NULL)
@@ -74,15 +82,23 @@ static int bpkfs_init(struct bpk_config *conf)
         fprintf(stderr, "Failed to open bpk file: %s\n", conf->path);
         return -1;
     }
+    else if (bpk_check_crc(conf->bpk) != 0)
+    {
+        bpk_close(conf->bpk);
+        fprintf(stderr, "Failed to open bpk file: %s (header corruption)\n",
+                conf->path);
+        return -1;
+    }
     STAILQ_INIT(&conf->parts);
 
-    while ((type = bpk_next(conf->bpk, &size)) != BPK_TYPE_INVALID)
+    while ((type = bpk_next(conf->bpk, &size, &crc)) != BPK_TYPE_INVALID)
     {
         p = malloc(sizeof (struct part));
         if (p == NULL)
             return -1;
 
         p->type = type;
+        p->crc = crc;
 
         switch (type)
         {
@@ -120,10 +136,23 @@ static void bpkfs_cleanup(struct bpk_config *conf)
     }
 }
 
+static int is_sfv(const char *path)
+{
+    const char *ext;
+
+    ext = strrchr(path, '.');
+    if (ext != NULL && strcmp(ext, SFV_SUFF) == 0)
+        return 1;
+    else
+        return 0;
+}
+
 static int bpkfs_getattr(const char *path, struct stat *stbuf)
 {
     int res = 0;
     struct part *part;
+    int sfv;
+    size_t len;
 
     memset(stbuf, 0, sizeof(struct stat));
     if (strcmp(path, "/") == 0)
@@ -133,14 +162,23 @@ static int bpkfs_getattr(const char *path, struct stat *stbuf)
     }
     else
     {
+        sfv = is_sfv(path);
+        if (sfv)
+            len = strlen(path) - 4;
+        else
+            len = strlen(path);
+
         res = -ENOENT;
         STAILQ_FOREACH(part, &config.parts, parts)
         {
-            if (strcmp(path, part->file) == 0)
+            if (strncmp(path, part->file, len) == 0)
             {
                 stbuf->st_mode = S_IFREG | 0444;
                 stbuf->st_nlink = 1;
-                stbuf->st_size = part->size;
+                if (sfv)
+                    stbuf->st_size = strlen(part->file) + SFV_CRC_LEN;
+                else
+                    stbuf->st_size = part->size;
                 res = 0;
                 break;
             }
@@ -157,6 +195,7 @@ static int bpkfs_readdir(
         struct fuse_file_info *fi)
 {
     struct part *part;
+    char *sfv;
     (void) offset;
     (void) fi;
 
@@ -169,6 +208,15 @@ static int bpkfs_readdir(
     STAILQ_FOREACH(part, &config.parts, parts)
     {
         filler(buf, part->file + 1, NULL, 0);
+
+        sfv = malloc(strlen(part->file + 1) + 1 + SFV_SUFF_LEN);
+        if (sfv)
+        {
+            strcpy(sfv, part->file + 1);
+            strcat(sfv, SFV_SUFF);
+            filler(buf, sfv, NULL, 0);
+            free(sfv);
+        }
     }
 
     return 0;
@@ -178,10 +226,16 @@ static int bpkfs_open(const char *path, struct fuse_file_info *fi)
 {
     struct part *part;
     int ret = -ENOENT;
+    size_t len;
+
+    if (is_sfv(path))
+        len = strlen(path) - 4;
+    else
+        len = strlen(path);
 
     STAILQ_FOREACH(part, &config.parts, parts)
     {
-        if (strcmp(path, part->file) == 0)
+        if (strncmp(path, part->file, len) == 0)
         {
             ret = 0;
             break;
@@ -196,6 +250,55 @@ static int bpkfs_open(const char *path, struct fuse_file_info *fi)
     return 0;
 }
 
+static int dump_file(
+        bpk *bpk,
+        const struct part *part,
+        char *buf,
+        size_t size,
+        off_t offset)
+{
+    if (offset < 0)
+        return -EINVAL;
+
+    if ((bpk_size) offset >= part->size)
+        return 0;
+    else if ((bpk_size) (offset + size) > part->size)
+        size = part->size - offset;
+
+    return pread(fileno(bpk->fd), buf, size, offset +
+            part->offset);
+}
+
+static int dump_sfv(
+        const struct part *part,
+        char *buf,
+        size_t size,
+        off_t offset)
+{
+    size_t len;
+    char *int_buf;
+
+    if (offset < 0)
+        return -EINVAL;
+
+    len = strlen(part->file + 1) + SFV_CRC_LEN + 1;
+    if ((size_t) offset >= len)
+        return 0;
+
+    int_buf = malloc(len);
+    if (!int_buf)
+        return -EINVAL;
+
+    snprintf(int_buf, len, "%s %.8X\n", part->file + 1, part->crc);
+    if (size + offset > --len)
+        size = len - offset;
+    strncpy(buf, &int_buf[offset], size);
+
+    free(int_buf);
+
+    return size;
+}
+
 static int bpkfs_read(
         const char *path,
         char *buf,
@@ -204,20 +307,24 @@ static int bpkfs_read(
         struct fuse_file_info *fi)
 {
     struct part *part;
+    int sfv;
+    size_t len;
     (void) fi;
+
+    sfv = is_sfv(path);
+    if (sfv)
+        len = strlen(path) - 4;
+    else
+        len = strlen(path);
 
     STAILQ_FOREACH(part, &config.parts, parts)
     {
-        if (strcmp(path, part->file) == 0)
+        if (strncmp(path, part->file, len) == 0)
         {
-            if (offset < 0)
-                return -EINVAL;
-            if ((bpk_size) offset >= part->size)
-                return 0;
-            else if ((bpk_size) (offset + size) > part->size)
-                size = part->size - offset;
-
-            return pread(fileno(config.bpk->fd), buf, size, offset + part->offset);
+            if (sfv)
+                return dump_sfv(part, buf, size, offset);
+            else
+                return dump_file(config.bpk, part, buf, size, offset);
         }
     }
     return -ENOENT;

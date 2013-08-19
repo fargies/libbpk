@@ -77,6 +77,8 @@ void bpk_close(bpk *bpk);
 
 /**
  * @brief check a bpk file crc.
+ * @details this crc only covers the headers.
+ *
  * @param[in] bpk the bpk file.
  * @return
  *  - 0 if the crc is correct.
@@ -112,22 +114,40 @@ int bpk_write(bpk *bpk, bpk_type type, const char *file);
  * @param[in] bpk the bpk file to seek.
  * @param[in] type the type to look for.
  * @param[out] size the found partition size.
+ * @param[out] crc the found partition crc.
  * @return
  *  - 0 if found.
  *  - < 0 if not found.
  */
-int bpk_find(bpk *bpk, bpk_type type, bpk_size *size);
+int bpk_find(
+        bpk *bpk,
+        bpk_type type,
+        bpk_size *size,
+        uint32_t *crc);
 
 /**
  * @brief get the next bpk partition.
  * @details the read pointer is moved to the next data section.
  * @param[in] bpk the bpk file to seek.
  * @param[out] size the found partition size.
+ * @param[out] crc the found partition crc.
  * @return
  *  - the found partition type.
  *  - BPK_TYPE_INVALID on eof.
  */
-bpk_type bpk_next(bpk *bpk, bpk_size *size);
+bpk_type bpk_next(
+        bpk *bpk,
+        bpk_size *size,
+        uint32_t *crc);
+
+/**
+ * @brief compute current partition data crc.
+ * @param[in] bpk the bpk file.
+ * @return
+ *  - the computed crc.
+ *  - 0xFFFFFFFF on error.
+ */
+uint32_t bpk_compute_data_crc(bpk *bpk);
 
 /**
  * @brief move back to the first partition.

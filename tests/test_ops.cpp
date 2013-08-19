@@ -33,6 +33,7 @@
 #include <fcntl.h>
 
 #include "bpk.h"
+#include "bpk_priv.h"
 
 #define SZ_1K (1024)
 #define SZ_512 (512)
@@ -108,12 +109,12 @@ protected:
         CPPUNIT_ASSERT(m_bpk);
 
         CPPUNIT_ASSERT_EQUAL(0,
-                bpk_find(m_bpk, BPK_TYPE_PBL, NULL));
+                bpk_find(m_bpk, BPK_TYPE_PBL, NULL, NULL));
         CPPUNIT_ASSERT_EQUAL(0,
                 bpk_read_file(m_bpk, m_data));
 
         CPPUNIT_ASSERT_EQUAL((bpk_type) BPK_TYPE_PBLV,
-                bpk_next(m_bpk, &size));
+                bpk_next(m_bpk, &size, NULL));
         CPPUNIT_ASSERT_EQUAL((bpk_size) SZ_1K * 2, size);
         char *buf = (char *) malloc(SZ_1K);
 
@@ -148,11 +149,11 @@ protected:
         CPPUNIT_ASSERT(m_bpk);
 
         CPPUNIT_ASSERT_EQUAL(0,
-                bpk_find(m_bpk, BPK_TYPE_PBL, NULL));
+                bpk_find(m_bpk, BPK_TYPE_PBL, NULL, NULL));
         CPPUNIT_ASSERT_EQUAL(0,
-                bpk_find(m_bpk, BPK_TYPE_PRFS, &size));
+                bpk_find(m_bpk, BPK_TYPE_PRFS, &size, NULL));
         CPPUNIT_ASSERT_EQUAL(0,
-                bpk_find(m_bpk, BPK_TYPE_PBL, &size));
+                bpk_find(m_bpk, BPK_TYPE_PBL, &size, NULL));
         bpk_close(m_bpk);
         m_bpk = NULL;
     }
@@ -167,7 +168,7 @@ protected:
 
         FILE *fd = fopen(m_file, "r+");
         CPPUNIT_ASSERT(fd);
-        fseek(fd, 42, SEEK_SET);
+        fseek(fd, sizeof (bpk_header), SEEK_SET);
         fwrite("test", 4, 1, fd);
         fclose(fd);
 
@@ -197,7 +198,7 @@ protected:
         m_bpk = bpk_open(m_file, 1);
         CPPUNIT_ASSERT_EQUAL(0, bpk_check_crc(m_bpk));
         CPPUNIT_ASSERT_EQUAL(0,
-                bpk_find(m_bpk, BPK_TYPE_PRFS, NULL));
+                bpk_find(m_bpk, BPK_TYPE_PRFS, NULL, NULL));
         bpk_close(m_bpk);
         m_bpk = NULL;
     }
@@ -217,7 +218,7 @@ protected:
         CPPUNIT_ASSERT(bpk_check_crc(m_bpk) == 0);
 
         int count = 0;
-        while (bpk_next(m_bpk, NULL) != BPK_TYPE_INVALID)
+        while (bpk_next(m_bpk, NULL, NULL) != BPK_TYPE_INVALID)
             ++count;
 
         CPPUNIT_ASSERT_EQUAL(5, count); /* must match create() */

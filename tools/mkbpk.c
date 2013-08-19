@@ -139,7 +139,7 @@ int main(int argc, char **argv)
         { "check", 0, 0, 'k' },
         { 0, 0, 0, 0 }
     };
-
+    uint32_t crc;
     bpk *bpk;
     bpk_size size;
     bpk_type type;
@@ -239,7 +239,7 @@ int main(int argc, char **argv)
                     struct part *p = STAILQ_FIRST(&parts);
                     STAILQ_REMOVE_HEAD(&parts, parts);
 
-                    if (bpk_find(bpk, p->type, NULL) != 0)
+                    if (bpk_find(bpk, p->type, NULL, NULL) != 0)
                     {
                         fprintf(stderr, "Failed to find part: %s\n",
                                 get_bpk_str(p->type));
@@ -257,21 +257,34 @@ int main(int argc, char **argv)
             else if (mode == 'l')
             {
                 fputs("Bpk partitions:\n", stdout);
-                while ((type = bpk_next(bpk, &size)) != BPK_TYPE_INVALID)
+                while ((type = bpk_next(bpk, &size, NULL)) != BPK_TYPE_INVALID)
                     fprintf(stdout, "  %s (size: %lu)\n", get_bpk_str(type),
                             (unsigned long) size);
             }
             else if (mode == 'k')
             {
+                ret = 0;
                 if (bpk_check_crc(bpk) != 0)
                 {
-                    fputs("KO\n", stdout);
+                    fputs("KO: header crc mismatch\n", stdout);
                     ret = EXIT_FAILURE;
                 }
                 else
                 {
+
+                    while ((type = bpk_next(bpk, NULL, &crc)) != BPK_TYPE_INVALID)
+                    {
+                        if (bpk_compute_data_crc(bpk) != crc)
+                        {
+                            fputs("KO: crc mismatch on ", stdout);
+                            fputs(get_bpk_str(type), stdout);
+                            ret = EXIT_FAILURE;
+                        }
+                    }
+                }
+                if (ret == 0)
+                {
                     fputs("OK\n", stdout);
-                    ret = 0;
                 }
             }
 
