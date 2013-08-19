@@ -85,6 +85,17 @@ void bpk_close(bpk *bpk);
 int bpk_check_crc(bpk *bpk);
 
 /**
+ * @brief compute the file's crc.
+ *
+ * @param[in] bpk the bpk file.
+ * @param[out] file_crc the crc written in the file's header.
+ * @return
+ *  - the computed crc.
+ *  - 0xFFFFFFFF on error.
+ */
+uint32_t bpk_compute_crc(bpk *bpk, uint32_t *file_crc);
+
+/**
  * @brief write a file in the bpk package.
  * @param[in] bpk the bpk file to edit.
  * @param[in] type the part type.

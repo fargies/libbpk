@@ -104,8 +104,9 @@ uint32_t crc32(const void *data, size_t len, uint32_t seed)
 {
 	const unsigned char *s = data;
 
+        seed = seed ^ 0xFFFFFFFFU;
 	while (len-- > 0)
 		seed = crc32_table[(seed ^ *s++) & 0xff] ^ (seed >> 8);
-	return seed;
+	return seed ^ 0xFFFFFFFFU;
 }
 

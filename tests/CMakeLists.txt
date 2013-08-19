@@ -11,11 +11,13 @@ include_directories(
 
 add_library(testHelper STATIC
     test_main.cpp
+    test_helpers.hpp test_helpers.cpp
     )
 target_link_libraries(testHelper ${CPPUNIT_LIBRARIES})
 
 set(test_SRCS
     test_ops.cpp
+    test_crc.cpp
     )
 
 add_executable(test_all ${test_SRCS})

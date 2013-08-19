@@ -142,16 +142,7 @@ bpk *bpk_open(const char *file, int append)
     return ret;
 }
 
-/**
- * @brief compute the file's crc.
- *
- * @param[in] bpk the bpk file.
- * @param[out] file_crc the crc written in the file's header.
- * @return
- *  - the computed crc.
- *  - 0xFFFFFFFF on error.
- */
-static uint32_t bpk_compute_crc(bpk *bpk, uint32_t *file_crc)
+uint32_t bpk_compute_crc(bpk *bpk, uint32_t *file_crc)
 {
     long pos;
     char *buff;

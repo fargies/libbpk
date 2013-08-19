@@ -34,7 +34,7 @@
 
 #define FLAG_CRC 0x01 /* compute crc and len when closing the file */
 
-#define BPK_CRC_SEED 0xFFFFFFFFU
+#define BPK_CRC_SEED 0x0U
 
 typedef struct __attribute__((packed)) {
     uint32_t magic;
