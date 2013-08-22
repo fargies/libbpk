@@ -218,20 +218,15 @@ int bpk_check_crc(bpk *bpk)
 
 int bpk_write(bpk *bpk, bpk_type type, const char *file)
 {
-    uint32_t crc = BPK_CRC_SEED;
-    struct stat st;
     char *buff;
     size_t len;
     FILE *fd_in;
     bpk_part part;
 
-    if (stat(file, &st) != 0)
-        return -1;
-
     part.type = htobe32(type);
     part.spare = 0;
-    part.size = htobe64(st.st_size);
-    part.crc = 0;
+    part.size = 0;
+    part.crc = BPK_CRC_SEED;
 
     fd_in = fopen(file, "r");
     if (fd_in == NULL)
@@ -254,7 +249,7 @@ int bpk_write(bpk *bpk, bpk_type type, const char *file)
 
     while ((len = fread(buff, 1, 2048, fd_in)) > 0)
     {
-        crc = crc32(buff, len, crc);
+        part.crc = crc32(buff, len, part.crc);
 
         if (fwrite(buff, len, 1, bpk->fd) != 1)
         {
@@ -262,6 +257,7 @@ int bpk_write(bpk *bpk, bpk_type type, const char *file)
             free(buff);
             return -3;
         }
+        part.size += len;
         bpk->size += len;
     }
     free(buff);
@@ -272,10 +268,13 @@ int bpk_write(bpk *bpk, bpk_type type, const char *file)
     }
     fclose(fd_in);
 
-    crc = htobe32(crc);
-    fseek(bpk->fd, - st.st_size - sizeof (bpk_part) + offsetof(bpk_part, crc),
+    fseek(bpk->fd, - part.size - sizeof (bpk_part) + offsetof(bpk_part, size),
             SEEK_CUR);
-    fwrite(&crc, sizeof (uint32_t), 1, bpk->fd);
+    part.size = htobe64(part.size);
+    part.crc = htobe32(part.crc);
+
+    fwrite(&part.size, sizeof (bpk_size), 1, bpk->fd);
+    fwrite(&part.crc, sizeof (uint32_t), 1, bpk->fd);
     fseek(bpk->fd, bpk->size, SEEK_SET);
 
     bpk->ppos = bpk->psize = 0;

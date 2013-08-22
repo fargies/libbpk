@@ -130,7 +130,7 @@ protected:
         };
         CPPUNIT_ASSERT_EQUAL(0, spawn(argv, NULL));
         */
-        CPPUNIT_ASSERT_EQUAL((uint32_t) 0x1dbd85f4, crc);
+        CPPUNIT_ASSERT_EQUAL((uint32_t) 0x93806d14, crc);
 
     }
 
@@ -141,12 +141,13 @@ protected:
         create();
 
         m_bpk = bpk_open(m_file, 0);
-        
+
         CPPUNIT_ASSERT(bpk_find(m_bpk, BPK_TYPE_PBL, NULL, &crc) == 0);
         bpk_rewind(m_bpk);
         CPPUNIT_ASSERT(bpk_next(m_bpk, NULL, &crc2) != BPK_TYPE_INVALID);
 
         CPPUNIT_ASSERT_EQUAL(crc, crc2);
+        CPPUNIT_ASSERT_EQUAL(crc, bpk_compute_data_crc(m_bpk));
 
         bpk_close(m_bpk);
         m_bpk = NULL;
