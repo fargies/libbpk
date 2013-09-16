@@ -26,12 +26,20 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #include "bpk.h"
 #include "bpk_priv.h"
 #include "crc32.h"
 #include "compat/endian.h"
 
+/**
+ * @brief initialize a bpk header.
+ * @param[in] fd the bpk filedescriptor.
+ * @return
+ *  0 on success.
+ *  -1 on error (errno set accordingly).
+ */
 static int bpk_init_header(FILE *fd)
 {
     bpk_header hdr;
@@ -42,7 +50,10 @@ static int bpk_init_header(FILE *fd)
     hdr.spare = 0;
 
     if (fwrite(&hdr, sizeof (bpk_header), 1, fd) != 1)
+    {
+        errno = EIO;
         return -1;
+    }
     else
         return 0;
 }
@@ -113,6 +124,7 @@ bpk *bpk_open(const char *file, int append)
                     (bpk_init_header(fd) != 0))
             {
                 fclose(fd);
+                errno = EIO;
                 fd = NULL;
             }
             else
@@ -127,6 +139,7 @@ bpk *bpk_open(const char *file, int append)
     else if (bpk_check_header(fd, &size) != 0)
     {
         fclose(fd);
+        errno = EILSEQ;
         return NULL;
     }
 
@@ -236,6 +249,7 @@ int bpk_write(bpk *bpk, bpk_type type, const char *file)
     if (fwrite(&part, sizeof (bpk_part), 1, bpk->fd) != 1)
     {
         fclose(fd_in);
+        errno = EIO;
         return -2;
     }
     bpk->size += sizeof (bpk_part);
@@ -255,6 +269,7 @@ int bpk_write(bpk *bpk, bpk_type type, const char *file)
         {
             fclose(fd_in);
             free(buff);
+            errno = EIO;
             return -3;
         }
         part.size += len;
@@ -264,6 +279,7 @@ int bpk_write(bpk *bpk, bpk_type type, const char *file)
     if (ferror(fd_in) != 0)
     {
         fclose(fd_in);
+        errno = EIO;
         return -4;
     }
     fclose(fd_in);
@@ -390,6 +406,9 @@ bpk_size bpk_read(bpk *bpk, void *buf, bpk_size size)
         return 0;
 
     size = fread(buf, 1, size, bpk->fd);
+    if (ferror(bpk->fd) != 0)
+        errno = EIO;
+
     bpk->ppos += size;
     return size;
 }
@@ -427,6 +446,7 @@ int bpk_read_file(bpk *bpk, const char *file)
         {
             fclose(fd_out);
             free(buff);
+            errno = EIO;
             return -3;
         }
     }
@@ -434,6 +454,7 @@ int bpk_read_file(bpk *bpk, const char *file)
     if (ferror(fd_out) != 0)
     {
         fclose(fd_out);
+        errno = EIO;
         return -4;
     }
     fclose(fd_out);

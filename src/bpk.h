@@ -52,7 +52,7 @@ typedef uint64_t bpk_size;
  * @param[in] file the file to create.
  * @return
  *  - the newly created bpk file.
- *  - NULL on error
+ *  - NULL on error (setting errno).
  */
 bpk *bpk_create(const char *file);
 
@@ -65,7 +65,7 @@ bpk *bpk_create(const char *file);
  * @param[in] append opens the file in RW mode.
  * @return
  *  - the opened bpk file.
- *  - NULL on error.
+ *  - NULL on error (setting errno).
  */
 bpk *bpk_open(const char *file, int append);
 
@@ -104,7 +104,7 @@ uint32_t bpk_compute_crc(bpk *bpk, uint32_t *file_crc);
  * @param[in] file the file the file to store in the bpk.
  * @return
  *  - 0 on success.
- *  - < 0 on failure.
+ *  - < 0 on failure (setting errno).
  */
 int bpk_write(bpk *bpk, bpk_type type, const char *file);
 
@@ -162,7 +162,7 @@ void bpk_rewind(bpk *bpk);
  * @param[in] size the buffer size to read.
  * @return
  *  - the number of bytes read is returned.
- *  - 0 on error.
+ *  - 0 on error (setting errno).
  */
 bpk_size bpk_read(bpk *bpk, void *buf, bpk_size size);
 
@@ -172,7 +172,7 @@ bpk_size bpk_read(bpk *bpk, void *buf, bpk_size size);
  * @param[in] file the file where to store the data.
  * @return
  *  - 0 on success.
- *  - < 0 on error.
+ *  - < 0 on error (setting errno).
  */
 int bpk_read_file(bpk *bpk, const char *file);
 
