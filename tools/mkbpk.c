@@ -1,18 +1,20 @@
 /*
-** This document and/or file is SOMFY's property. All information it
-** contains is strictly confidential. This document and/or file shall
-** not be used, reproduced or passed on in any way, in full or in part
-** without SOMFY's prior written approval. All rights reserved.
-** Ce document et/ou fichier est la propritye SOMFY. Les informations
-** quil contient sont strictement confidentielles. Toute reproduction,
-** utilisation, transmission de ce document et/ou fichier, partielle ou
-** intégrale, non autorisée préalablement par SOMFY par écrit est
-** interdite. Tous droits réservés.
-** 
-** Copyright © (2009-2012), Somfy SAS. All rights reserved.
-** All reproduction, use or distribution of this software, in whole or
-** in part, by any means, without Somfy SAS prior written approval, is
-** strictly forbidden.
+** Copyright © (2013-2014), Somfy SAS. All rights reserved.
+**
+** This library is free software; you can redistribute it and/or
+** modify it under the terms of the GNU Lesser General Public
+** License as published by the Free Software Foundation; either
+** version 2.1 of the License, or (at your option) any later version.
+**
+** This library is distributed in the hope that it will be useful,
+** but WITHOUT ANY WARRANTY; without even the implied warranty of
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+** Lesser General Public License for more details.
+**
+** You should have received a copy of the GNU Lesser General Public
+** License along with this library; if not, write to the Free Software
+** Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+** MA 02110-1301 USA
 **
 ** mkbpk.c
 **
