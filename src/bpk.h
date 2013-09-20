@@ -35,10 +35,10 @@ extern "C" {
  * @{
  */
 
-#define BPK_TYPE_PBL 0x50424C00 /* PBL */
-#define BPK_TYPE_PBLV 0x50424C56 /* PBLV */
-#define BPK_TYPE_PKER 0x504B4552 /* PKER */
-#define BPK_TYPE_PRFS 0x50524653 /* PRFS */
+#define BPK_TYPE_BL 0x50424C00 /* PBL */
+#define BPK_TYPE_BLV 0x50424C56 /* PBLV */
+#define BPK_TYPE_KER 0x504B4552 /* PKER */
+#define BPK_TYPE_RFS 0x50524653 /* PRFS */
 #define BPK_TYPE_FWV 0x46575600 /* FWV */
 #define BPK_TYPE_INVALID 0xDEADBEEF
 
@@ -101,18 +101,24 @@ uint32_t bpk_compute_crc(bpk *bpk, uint32_t *file_crc);
  * @brief write a file in the bpk package.
  * @param[in] bpk the bpk file to edit.
  * @param[in] type the part type.
+ * @param[in] hw_id the associated hardware id.
  * @param[in] file the file the file to store in the bpk.
  * @return
  *  - 0 on success.
  *  - < 0 on failure (setting errno).
  */
-int bpk_write(bpk *bpk, bpk_type type, const char *file);
+int bpk_write(
+        bpk *bpk,
+        bpk_type type,
+        uint32_t hw_id,
+        const char *file);
 
 /**
  * @brief find a bpk partition.
  * @details the read pointer is moved to the found data section.
  * @param[in] bpk the bpk file to seek.
  * @param[in] type the type to look for.
+ * @param[in] hw_id the hardware id to seek.
  * @param[out] size the found partition size.
  * @param[out] crc the found partition crc.
  * @return
@@ -122,6 +128,7 @@ int bpk_write(bpk *bpk, bpk_type type, const char *file);
 int bpk_find(
         bpk *bpk,
         bpk_type type,
+        uint32_t hw_id,
         bpk_size *size,
         uint32_t *crc);
 
@@ -131,6 +138,7 @@ int bpk_find(
  * @param[in] bpk the bpk file to seek.
  * @param[out] size the found partition size.
  * @param[out] crc the found partition crc.
+ * @param[out] hw_id the found hardware id.
  * @return
  *  - the found partition type.
  *  - BPK_TYPE_INVALID on eof.
@@ -138,7 +146,8 @@ int bpk_find(
 bpk_type bpk_next(
         bpk *bpk,
         bpk_size *size,
-        uint32_t *crc);
+        uint32_t *crc,
+        uint32_t *hw_id);
 
 /**
  * @brief compute current partition data crc.

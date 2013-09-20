@@ -87,15 +87,15 @@ protected:
         CPPUNIT_ASSERT(m_bpk);
 
         CPPUNIT_ASSERT_EQUAL(0,
-                bpk_write(m_bpk, BPK_TYPE_PBL, m_data));
+                bpk_write(m_bpk, BPK_TYPE_BL, 0, m_data));
         CPPUNIT_ASSERT_EQUAL(0,
-                bpk_write(m_bpk, BPK_TYPE_PBLV, m_data));
+                bpk_write(m_bpk, BPK_TYPE_BLV, 0xFFFFFFFF, m_data));
         CPPUNIT_ASSERT_EQUAL(0,
-                bpk_write(m_bpk, BPK_TYPE_PKER, m_data));
+                bpk_write(m_bpk, BPK_TYPE_KER, 0, m_data));
         CPPUNIT_ASSERT_EQUAL(0,
-                bpk_write(m_bpk, BPK_TYPE_PRFS, m_data));
+                bpk_write(m_bpk, BPK_TYPE_RFS, 0, m_data));
         CPPUNIT_ASSERT_EQUAL(0,
-                bpk_write(m_bpk, 42, m_data));
+                bpk_write(m_bpk, 42, 0, m_data));
         bpk_close(m_bpk);
         m_bpk = NULL;
     }
@@ -103,18 +103,20 @@ protected:
     void read()
     {
         bpk_size size;
+        uint32_t hw_id = 1;
         create();
 
         m_bpk = bpk_open(m_file, 0);
         CPPUNIT_ASSERT(m_bpk);
 
         CPPUNIT_ASSERT_EQUAL(0,
-                bpk_find(m_bpk, BPK_TYPE_PBL, NULL, NULL));
+                bpk_find(m_bpk, BPK_TYPE_BL, 0, NULL, NULL));
         CPPUNIT_ASSERT_EQUAL(0,
                 bpk_read_file(m_bpk, m_data));
 
-        CPPUNIT_ASSERT_EQUAL((bpk_type) BPK_TYPE_PBLV,
-                bpk_next(m_bpk, &size, NULL));
+        CPPUNIT_ASSERT_EQUAL((bpk_type) BPK_TYPE_BLV,
+                bpk_next(m_bpk, &size, NULL, &hw_id));
+        CPPUNIT_ASSERT_EQUAL(hw_id, (uint32_t) 0xFFFFFFFF);
         CPPUNIT_ASSERT_EQUAL((bpk_size) SZ_1K * 2, size);
         char *buf = (char *) malloc(SZ_1K);
 
@@ -149,11 +151,12 @@ protected:
         CPPUNIT_ASSERT(m_bpk);
 
         CPPUNIT_ASSERT_EQUAL(0,
-                bpk_find(m_bpk, BPK_TYPE_PBL, NULL, NULL));
+                bpk_find(m_bpk, BPK_TYPE_BL, 0, NULL, NULL));
         CPPUNIT_ASSERT_EQUAL(0,
-                bpk_find(m_bpk, BPK_TYPE_PRFS, &size, NULL));
+                bpk_find(m_bpk, BPK_TYPE_RFS, 0, &size, NULL));
         CPPUNIT_ASSERT_EQUAL(0,
-                bpk_find(m_bpk, BPK_TYPE_PBL, &size, NULL));
+                bpk_find(m_bpk, BPK_TYPE_BL, 0, &size, NULL));
+        CPPUNIT_ASSERT(bpk_find(m_bpk, BPK_TYPE_BLV, 0, &size, NULL) != 0);
         bpk_close(m_bpk);
         m_bpk = NULL;
     }
@@ -185,20 +188,20 @@ protected:
         CPPUNIT_ASSERT(m_bpk);
 
         CPPUNIT_ASSERT_EQUAL(0,
-                bpk_write(m_bpk, BPK_TYPE_PBL, m_data));
+                bpk_write(m_bpk, BPK_TYPE_BL, 0, m_data));
         CPPUNIT_ASSERT_EQUAL(0,
-                bpk_write(m_bpk, BPK_TYPE_PBLV, m_data));
+                bpk_write(m_bpk, BPK_TYPE_BLV, 0, m_data));
         bpk_close(m_bpk);
 
         m_bpk = bpk_open(m_file, 1);
         CPPUNIT_ASSERT_EQUAL(0,
-                bpk_write(m_bpk, BPK_TYPE_PRFS, m_data));
+                bpk_write(m_bpk, BPK_TYPE_RFS, 0, m_data));
         bpk_close(m_bpk);
 
         m_bpk = bpk_open(m_file, 1);
         CPPUNIT_ASSERT_EQUAL(0, bpk_check_crc(m_bpk));
         CPPUNIT_ASSERT_EQUAL(0,
-                bpk_find(m_bpk, BPK_TYPE_PRFS, NULL, NULL));
+                bpk_find(m_bpk, BPK_TYPE_RFS, 0, NULL, NULL));
         bpk_close(m_bpk);
         m_bpk = NULL;
     }
@@ -218,7 +221,7 @@ protected:
         CPPUNIT_ASSERT(bpk_check_crc(m_bpk) == 0);
 
         int count = 0;
-        while (bpk_next(m_bpk, NULL, NULL) != BPK_TYPE_INVALID)
+        while (bpk_next(m_bpk, NULL, NULL, NULL) != BPK_TYPE_INVALID)
             ++count;
 
         CPPUNIT_ASSERT_EQUAL(5, count); /* must match create() */

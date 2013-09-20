@@ -24,11 +24,11 @@
 #ifndef __BPKFS_H__
 #define __BPKFS_H__
 
-#define BPK_FILE_PBL "/picocom_bootloader"
-#define BPK_FILE_PBLV "/picocom_bootloader_version"
-#define BPK_FILE_PRFS "/picocom_rootfs"
-#define BPK_FILE_PKER "/picocom_kernel"
-#define BPK_FILE_FWV "/firmware_version"
+#define BPK_FILE_BL "bootloader"
+#define BPK_FILE_BLV "bootloader_version"
+#define BPK_FILE_RFS "rootfs"
+#define BPK_FILE_KER "kernel"
+#define BPK_FILE_FWV "firmware_version"
 
 #endif
 

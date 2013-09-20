@@ -229,7 +229,11 @@ int bpk_check_crc(bpk *bpk)
     return ((crc != 0xFFFFFFFF) && (crc == ref_crc)) ? 0 : -1;
 }
 
-int bpk_write(bpk *bpk, bpk_type type, const char *file)
+int bpk_write(
+        bpk *bpk,
+        bpk_type type,
+        uint32_t hw_id,
+        const char *file)
 {
     char *buff;
     size_t len;
@@ -237,6 +241,7 @@ int bpk_write(bpk *bpk, bpk_type type, const char *file)
     bpk_part part;
 
     part.type = htobe32(type);
+    part.hw_id = htobe32(hw_id);
     part.spare = 0;
     part.size = 0;
     part.crc = BPK_CRC_SEED;
@@ -308,11 +313,14 @@ static int bpk_read_part(bpk *bpk, bpk_part *part)
     part->type = be32toh(part->type);
     part->size = be64toh(part->size);
     part->crc = be32toh(part->crc);
+    part->hw_id = be32toh(part->hw_id);
     return 0;
 }
 
 int bpk_find(
-        bpk *bpk, bpk_type type,
+        bpk *bpk,
+        bpk_type type,
+        uint32_t hw_id,
         bpk_size *size,
         uint32_t *crc)
 {
@@ -322,7 +330,7 @@ int bpk_find(
 
     while (bpk_read_part(bpk, &part) == 0)
     {
-        if (part.type == type)
+        if (part.type == type && part.hw_id == hw_id)
         {
             if (size != NULL)
                 *size = part.size;
@@ -340,7 +348,8 @@ int bpk_find(
 bpk_type bpk_next(
         bpk *bpk,
         bpk_size *size,
-        uint32_t *crc)
+        uint32_t *crc,
+        uint32_t *hw_id)
 {
     bpk_part part;
 
@@ -353,6 +362,8 @@ bpk_type bpk_next(
             *size = part.size;
         if (crc != NULL)
             *crc = part.crc;
+        if (hw_id != NULL)
+            *hw_id = part.hw_id;
         bpk->ppos = 0;
         bpk->psize = part.size;
         return part.type;

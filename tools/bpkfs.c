@@ -47,31 +47,213 @@
 /* ' ' + crc + '\n' */
 #define SFV_CRC_LEN (1 + 8 + 1)
 
-struct part
+typedef struct partition
 {
     bpk_type type;
     const char *file;
     uint32_t crc;
     bpk_size size;
     off_t offset;
-    STAILQ_ENTRY(part) parts;
-};
-STAILQ_HEAD(parthead, part);
+    STAILQ_ENTRY(partition) parts;
+} partition;
+STAILQ_HEAD(parthead, partition);
+
+typedef struct hardware
+{
+    uint32_t id;
+    char *name;
+    struct parthead parts;
+    STAILQ_ENTRY(hardware) hards;
+} hardware;
+STAILQ_HEAD(hardhead, hardware);
 
 struct bpk_config {
      char *path;
      bpk *bpk;
-     struct parthead parts;
+     struct hardhead hards;
 };
 
 static struct bpk_config config;
+
+/**
+ * @brief find an existing hardware in the config.
+ *
+ * @param[in] config the bpk file.
+ * @param[in] id the hardware id to look for.
+ * @return
+ *  - NULL if the hardware couldn't be found.
+ *  - an hardware pointer.
+ */
+static hardware *bpkfs_find_hw_id(struct bpk_config *config, uint32_t id)
+{
+    hardware *hard;
+
+    STAILQ_FOREACH(hard, &config->hards, hards)
+    {
+        if (hard->id == id)
+            return hard;
+    }
+    return NULL;
+}
+
+static hardware *bpkfs_find_hw_name(
+        struct bpk_config *config,
+        const char *name)
+{
+    hardware *hard;
+
+    STAILQ_FOREACH(hard, &config->hards, hards)
+    {
+        if (strcmp(name, hard->name) == 0)
+            return hard;
+    }
+    return NULL;
+}
+
+static partition *bpkfs_find_part(
+        struct bpk_config *config,
+        const char *hw_id,
+        const char *file)
+{
+    hardware *h;
+    partition *p;
+
+    h = bpkfs_find_hw_name(config, hw_id);
+    if (h != NULL)
+    {
+        STAILQ_FOREACH(p, &h->parts, parts)
+        {
+            if (strcmp(file, p->file) == 0)
+                return p;
+        }
+    }
+    return NULL;
+}
+
+
+/**
+ * @brief create a new hardware object.
+ *
+ * @param[in] id the hardware id.
+ * @return
+ *  - NULL on malloc error.
+ */
+static hardware *hardware_new(uint32_t id)
+{
+    hardware *h = malloc(sizeof (hardware));
+    if (h == NULL)
+        return NULL;
+
+    h->id = id;
+    h->name = malloc(17);
+    snprintf(h->name, 17, "hw_id_%x", id);
+    STAILQ_INIT(&h->parts);
+    return h;
+}
+
+/**
+ * @brief create a new partition object.
+ *
+ * @param[in] type the partition type.
+ * @param[in] size the partition size.
+ * @param[in] crc the partition crc.
+ * @param[in] offset the partition offset in the file.
+ * @return
+ *  - NULL on malloc error.
+ */
+static partition *partition_new(
+        bpk_type type,
+        bpk_size size,
+        uint32_t crc,
+        off_t offset)
+{
+    partition *p = malloc(sizeof (partition));
+    if (p == NULL)
+        return NULL;
+
+    p->type = type;
+    p->crc = crc;
+
+    switch (type)
+    {
+        case BPK_TYPE_FWV:
+            p->file = BPK_FILE_FWV; break;
+        case BPK_TYPE_BL:
+            p->file = BPK_FILE_BL; break;
+        case BPK_TYPE_BLV:
+            p->file = BPK_FILE_BLV; break;
+        case BPK_TYPE_KER:
+            p->file = BPK_FILE_KER; break;
+        case BPK_TYPE_RFS:
+            p->file = BPK_FILE_RFS; break;
+        default:
+            p->file = malloc(17);
+            snprintf((char *) p->file, 17, "unknown_%.8x", type);
+            break;
+    }
+    p->size = size;
+    p->offset = offset;
+    return p;
+}
+
+static void partition_delete(partition *p)
+{
+    if (p == NULL)
+        return;
+
+    switch (p->type)
+    {
+        case BPK_TYPE_FWV:
+        case BPK_TYPE_BL:
+        case BPK_TYPE_BLV:
+        case BPK_TYPE_KER:
+        case BPK_TYPE_RFS:
+            break;
+        default:
+            free((char *) p->file);
+            break;
+    }
+    free(p);
+}
+
+static void hardware_delete(hardware *h)
+{
+    partition *p;
+
+    if (h == NULL)
+        return;
+
+    while (!STAILQ_EMPTY(&h->parts))
+    {
+        p = STAILQ_FIRST(&h->parts);
+        STAILQ_REMOVE_HEAD(&h->parts, parts);
+        partition_delete(p);
+    }
+    free(h->name);
+    free(h);
+}
+
+static void bpkfs_cleanup(struct bpk_config *conf)
+{
+    hardware *h;
+
+    while (!STAILQ_EMPTY(&conf->hards))
+    {
+        h = STAILQ_FIRST(&conf->hards);
+        STAILQ_REMOVE_HEAD(&conf->hards, hards);
+        hardware_delete(h);
+    }
+}
+
 
 static int bpkfs_init(struct bpk_config *conf)
 {
     bpk_type type;
     bpk_size size;
     uint32_t crc;
-    struct part *p;
+    uint32_t hw_id;
+    partition *p;
+    hardware *h;
 
     if (conf == NULL || conf->path == NULL)
         return -1;
@@ -89,53 +271,41 @@ static int bpkfs_init(struct bpk_config *conf)
                 conf->path);
         return -1;
     }
-    STAILQ_INIT(&conf->parts);
+    STAILQ_INIT(&conf->hards);
 
-    while ((type = bpk_next(conf->bpk, &size, &crc)) != BPK_TYPE_INVALID)
+    while ((type = bpk_next(conf->bpk, &size, &crc, &hw_id)) != BPK_TYPE_INVALID)
     {
-        p = malloc(sizeof (struct part));
+        p = partition_new(type, size, crc, ftell(conf->bpk->fd));
         if (p == NULL)
-            return -1;
-
-        p->type = type;
-        p->crc = crc;
-
-        switch (type)
         {
-            case BPK_TYPE_FWV:
-                p->file = BPK_FILE_FWV; break;
-            case BPK_TYPE_PBL:
-                p->file = BPK_FILE_PBL; break;
-            case BPK_TYPE_PBLV:
-                p->file = BPK_FILE_PBLV; break;
-            case BPK_TYPE_PKER:
-                p->file = BPK_FILE_PKER; break;
-            case BPK_TYPE_PRFS:
-                p->file = BPK_FILE_PRFS; break;
-            default:
-                free(p);
-                continue;
+            bpkfs_cleanup(conf);
+            return -1;
         }
-        p->size = size;
-        p->offset = ftell(conf->bpk->fd);
-        STAILQ_INSERT_TAIL(&conf->parts, p, parts);
+
+        h = bpkfs_find_hw_id(conf, hw_id);
+        if (h == NULL)
+        {
+            if ((h = hardware_new(hw_id)) == NULL)
+            {
+                partition_delete(p);
+                bpkfs_cleanup(conf);
+                return -1;
+            }
+            STAILQ_INSERT_TAIL(&conf->hards, h, hards);
+        }
+
+        STAILQ_INSERT_TAIL(&h->parts, p, parts);
     }
 
     return 0;
 }
 
-static void bpkfs_cleanup(struct bpk_config *conf)
-{
-    struct part *p;
-
-    while (!STAILQ_EMPTY(&conf->parts))
-    {
-        p = STAILQ_FIRST(&conf->parts);
-        STAILQ_REMOVE_HEAD(&conf->parts, parts);
-        free(p);
-    }
-}
-
+/**
+ * @brief test wether the given file is a 'sfv' or not.
+ *
+ * @return
+ *  - != O if the file is an sfv file.
+ */
 static int is_sfv(const char *path)
 {
     const char *ext;
@@ -147,45 +317,70 @@ static int is_sfv(const char *path)
         return 0;
 }
 
+/**
+ * @brief split path in two.
+ *
+ * @details hw_id and part are parts from the same buffer, only hw_id must be
+ * freed.
+ */
+static void splitpath(const char *path, char **hw_id, char **part)
+{
+    if (path[0] == '/')
+        ++path;
+
+    *hw_id = strdup(path);
+
+    *part = strchr(*hw_id, '/');
+    if (*part != NULL)
+    {
+        *((*part)++) = '\0';
+        if (*part == '\0')
+            *part = NULL;
+    }
+}
+
 static int bpkfs_getattr(const char *path, struct stat *stbuf)
 {
     int res = 0;
-    struct part *part;
+    partition *p;
     int sfv;
-    size_t len;
+    char *hw_id, *part;
 
-    memset(stbuf, 0, sizeof(struct stat));
-    if (strcmp(path, "/") == 0)
+    splitpath(path, &hw_id, &part);
+
+    if (part == NULL)
     {
-        stbuf->st_mode = S_IFDIR | 0755;
-        stbuf->st_nlink = 2;
+        if (*hw_id != '\0' &&
+                bpkfs_find_hw_name(&config, hw_id) == NULL)
+            res = -ENOENT;
+        else
+        {
+            memset(stbuf, 0, sizeof(struct stat));
+            stbuf->st_mode = S_IFDIR | 0755;
+            stbuf->st_nlink = 2;
+        }
     }
     else
     {
-        sfv = is_sfv(path);
-        if (sfv)
-            len = strlen(path) - 4;
-        else
-            len = strlen(path);
+        if ((sfv = is_sfv(part)) != 0)
+            part[strlen(part) - SFV_SUFF_LEN] = '\0';
 
-        res = -ENOENT;
-        STAILQ_FOREACH(part, &config.parts, parts)
+        p = bpkfs_find_part(&config, hw_id, part);
+        if (p == NULL)
+            res = -ENOENT;
+        else
         {
-            if (strncmp(path, part->file, len) == 0)
-            {
-                stbuf->st_mode = S_IFREG | 0444;
-                stbuf->st_nlink = 1;
-                if (sfv)
-                    stbuf->st_size = strlen(part->file) + SFV_CRC_LEN;
-                else
-                    stbuf->st_size = part->size;
-                res = 0;
-                break;
-            }
+            memset(stbuf, 0, sizeof(struct stat));
+            stbuf->st_mode = S_IFREG | 0444;
+            stbuf->st_nlink = 1;
+            stbuf->st_size = (sfv) ? (strlen(p->file) + SFV_CRC_LEN) :
+                (p->size);
         }
     }
+    free(hw_id);
     return res;
 }
+
 
 static int bpkfs_readdir(
         const char *path,
@@ -194,57 +389,76 @@ static int bpkfs_readdir(
         off_t offset,
         struct fuse_file_info *fi)
 {
-    struct part *part;
+    hardware *h;
+    partition *p;
     char *sfv;
+    char *hw_id, *part;
+    int ret = 0;
+
     (void) offset;
     (void) fi;
 
-    if (strcmp(path, "/") != 0)
-        return -ENOENT;
+    splitpath(path, &hw_id, &part);
 
-    filler(buf, ".", NULL, 0);
-    filler(buf, "..", NULL, 0);
-
-    STAILQ_FOREACH(part, &config.parts, parts)
+    if (part != NULL)
+        ret = -ENOENT;
+    else if (*hw_id == '\0')
     {
-        filler(buf, part->file + 1, NULL, 0);
+        filler(buf, ".", NULL, 0);
+        filler(buf, "..", NULL, 0);
 
-        sfv = malloc(strlen(part->file + 1) + 1 + SFV_SUFF_LEN);
-        if (sfv)
+        STAILQ_FOREACH(h, &config.hards, hards)
         {
-            strcpy(sfv, part->file + 1);
-            strcat(sfv, SFV_SUFF);
-            filler(buf, sfv, NULL, 0);
-            free(sfv);
+            filler(buf, h->name, NULL, 0);
         }
     }
+    else
+    {
+        h = bpkfs_find_hw_name(&config, hw_id);
+        if (h == NULL)
+            ret = -ENOENT;
+        else
+        {
+            filler(buf, ".", NULL, 0);
+            filler(buf, "..", NULL, 0);
 
-    return 0;
+            STAILQ_FOREACH(p, &h->parts, parts)
+            {
+                filler(buf, p->file, NULL, 0);
+
+                sfv = malloc(strlen(p->file) + 1 + SFV_SUFF_LEN);
+                if (sfv)
+                {
+                    strcpy(sfv, p->file);
+                    strcat(sfv, SFV_SUFF);
+                    filler(buf, sfv, NULL, 0);
+                    free(sfv);
+                }
+            }
+        }
+    }
+    free(hw_id);
+    return ret;
 }
 
 static int bpkfs_open(const char *path, struct fuse_file_info *fi)
 {
-    struct part *part;
     int ret = -ENOENT;
-    size_t len;
+    char *hw_id, *part;
 
-    if (is_sfv(path))
-        len = strlen(path) - 4;
-    else
-        len = strlen(path);
+    splitpath(path, &hw_id, &part);
 
-    STAILQ_FOREACH(part, &config.parts, parts)
+    if (part != NULL)
     {
-        if (strncmp(path, part->file, len) == 0)
-        {
-            ret = 0;
-            break;
-        }
-    }
-    if (ret != 0)
-        return ret;
+        if (is_sfv(part))
+            part[strlen(part) - SFV_SUFF_LEN] = '\0';
 
-    if ((fi->flags & 3) != O_RDONLY)
+        if (bpkfs_find_part(&config, hw_id, part) != NULL)
+            ret = 0;
+    }
+    free(hw_id);
+
+    if ((ret == 0) && (fi->flags & 3) != O_RDONLY)
         return -EACCES;
 
     return 0;
@@ -252,7 +466,7 @@ static int bpkfs_open(const char *path, struct fuse_file_info *fi)
 
 static int dump_file(
         bpk *bpk,
-        const struct part *part,
+        const partition *part,
         char *buf,
         size_t size,
         off_t offset)
@@ -270,7 +484,7 @@ static int dump_file(
 }
 
 static int dump_sfv(
-        const struct part *part,
+        const partition *part,
         char *buf,
         size_t size,
         off_t offset)
@@ -281,7 +495,7 @@ static int dump_sfv(
     if (offset < 0)
         return -EINVAL;
 
-    len = strlen(part->file + 1) + SFV_CRC_LEN + 1;
+    len = strlen(part->file) + SFV_CRC_LEN + 1;
     if ((size_t) offset >= len)
         return 0;
 
@@ -289,7 +503,7 @@ static int dump_sfv(
     if (!int_buf)
         return -EINVAL;
 
-    snprintf(int_buf, len, "%s %.8X\n", part->file + 1, part->crc);
+    snprintf(int_buf, len, "%s %.8X\n", part->file, part->crc);
     if (size + offset > --len)
         size = len - offset;
     strncpy(buf, &int_buf[offset], size);
@@ -306,26 +520,25 @@ static int bpkfs_read(
         off_t offset,
         struct fuse_file_info *fi)
 {
-    struct part *part;
+    partition *p;
     int sfv;
-    size_t len;
+    char *hw_id, *part;
     (void) fi;
 
-    sfv = is_sfv(path);
-    if (sfv)
-        len = strlen(path) - 4;
-    else
-        len = strlen(path);
+    splitpath(path, &hw_id, &part);
 
-    STAILQ_FOREACH(part, &config.parts, parts)
+    if ((sfv = is_sfv(part)) != 0)
+        part[strlen(part) - SFV_SUFF_LEN] = '\0';
+
+    p = bpkfs_find_part(&config, hw_id, part);
+    free(hw_id);
+
+    if (p != NULL)
     {
-        if (strncmp(path, part->file, len) == 0)
-        {
-            if (sfv)
-                return dump_sfv(part, buf, size, offset);
-            else
-                return dump_file(config.bpk, part, buf, size, offset);
-        }
+        if (sfv)
+            return dump_sfv(p, buf, size, offset);
+        else
+            return dump_file(config.bpk, p, buf, size, offset);
     }
     return -ENOENT;
 }

@@ -87,7 +87,7 @@ protected:
         CPPUNIT_ASSERT(m_bpk);
 
         CPPUNIT_ASSERT_EQUAL(0,
-                bpk_write(m_bpk, BPK_TYPE_PBL, m_data));
+                bpk_write(m_bpk, BPK_TYPE_BL, 0, m_data));
         bpk_close(m_bpk);
         m_bpk = NULL;
     }
@@ -142,9 +142,9 @@ protected:
 
         m_bpk = bpk_open(m_file, 0);
 
-        CPPUNIT_ASSERT(bpk_find(m_bpk, BPK_TYPE_PBL, NULL, &crc) == 0);
+        CPPUNIT_ASSERT(bpk_find(m_bpk, BPK_TYPE_BL, 0, NULL, &crc) == 0);
         bpk_rewind(m_bpk);
-        CPPUNIT_ASSERT(bpk_next(m_bpk, NULL, &crc2) != BPK_TYPE_INVALID);
+        CPPUNIT_ASSERT(bpk_next(m_bpk, NULL, &crc2, NULL) != BPK_TYPE_INVALID);
 
         CPPUNIT_ASSERT_EQUAL(crc, crc2);
         CPPUNIT_ASSERT_EQUAL(crc, bpk_compute_data_crc(m_bpk));
