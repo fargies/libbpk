@@ -1,3 +1,15 @@
+*.cmake
+*.so
+*.a
 *.swp
 *.swo
 /build/
+CMakeFiles
+CMakeCache.txt
+Makefile
+Doxyfile
+install_manifest.txt
+/version.h
+/.version
+libbpk.pc
+/tests/test_all
