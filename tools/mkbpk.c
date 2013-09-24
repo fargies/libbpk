@@ -31,6 +31,7 @@
 
 #include "bpk.h"
 #include "compat/queue.h"
+#include "zio.h"
 
 static const struct {
     const char *str;
@@ -41,12 +42,13 @@ static const struct {
     { "bootloader_version", BPK_TYPE_BLV },
     { "kernel", BPK_TYPE_KER },
     { "rootfs", BPK_TYPE_RFS },
+    { "description", BPK_TYPE_DEZC },
 };
 #define bpk_types_str_size (sizeof (bpk_types_str) / sizeof (bpk_types_str[0]))
 
 static void usage(FILE *out, const char *name)
 {
-    fprintf(out, "Usage: %s [options] [-c|-x] [-f] file [-p] type:[hw_id:]file ...\n", name);
+    fprintf(out, "Usage: %s [options] [-c|-x] [-f] file [-p] type:[hw_id:][z:]file ...\n", name);
     fputs("\nOptions:\n", out);
     fputs("  -h, --help        Show this help message and exit\n", out);
     fputs("  -f, --file=<f>    Set the file to work on\n", out);
@@ -57,7 +59,7 @@ static void usage(FILE *out, const char *name)
     fputs("  -t, --list-types  List supported partition types\n", out);
     fputs("  -k, --check       Check a bpk CRC\n", out);
     fputs("\nExamples:\n", out);
-    fputs("  mkbpk -c test.bpk rootfs:root.img kernel:uImage version:version.txt\n", out);
+    fputs("  mkbpk -c test.bpk rootfs:root.img kernel:uImage version:z:version.txt\n", out);
     fputs("  mkbpk -x test.bpk 0xFEETFEET:12:version.txt\n", out);
     fputs("\n", out);
 }
@@ -67,6 +69,7 @@ struct part
     bpk_type type;
     char *file;
     uint32_t hw_id;
+    int comp;
     STAILQ_ENTRY(part) parts;
 };
 STAILQ_HEAD(parthead, part);
@@ -98,70 +101,69 @@ static const char *get_bpk_str(bpk_type type)
     return unknown_buff;
 }
 
-static int splitargs(const char *arg, char **type, char **hw_id, char **file)
+static int parse_uint32(const char *str, uint32_t *ret)
 {
-    *type = strdup(arg);
+    long int i;
 
-    *hw_id = strchr(*type, ':');
-    if (hw_id == NULL)
-    {
-        free(*type);
+    if (sscanf(str, "%li", &i) != 1 ||
+            i > (long int) UINT32_MAX)
         return -1;
-    }
-    *(*hw_id)++ = '\0';
-
-    if ((*file = strchr(*hw_id, ':')) == NULL)
-    {
-        *file = *hw_id;
-        *hw_id = NULL;
-    }
     else
-        *(*file)++ = '\0';
-    return 0;
+    {
+        *ret = (uint32_t) i;
+        return 0;
+    }
 }
+
+#define MAX_ARGS_PART 4
 
 static struct part *create_part(const char *arg)
 {
+    char *args[MAX_ARGS_PART];
+    char *saveptr, *split = strdup(arg);
+    size_t i, args_count;
+    int ret = -1;
     struct part *p;
-    char *type, *hw_id, *file;
-    long int l_type, l_hw_id;
-    int ret = 0;
 
-    if (splitargs(arg, &type, &hw_id, &file) != 0)
-        return NULL;
+    p = calloc(1, sizeof (struct part));
 
-    p = malloc(sizeof (struct part));
-    p->type = get_bpk_type(type);
-    p->hw_id = 0;
-
-    if (p->type == BPK_TYPE_INVALID)
+    for (i = 0; i < MAX_ARGS_PART; ++i)
     {
-        if (sscanf(type, "%li", &l_type) != 1 ||
-                l_type > UINT32_MAX)
-            ret = -1;
-        else
-            p->type = l_type;
+        args[i] = strtok_r((i == 0) ? split : NULL, ":", &saveptr);
+        if (args[i] == NULL)
+            break;
     }
-    if (ret == 0 && hw_id)
+
+    args_count = i;
+    if (args_count < 2)
+        goto splitargs_err;
+
+    p->type = get_bpk_type(args[0]);
+    if (p->type == BPK_TYPE_INVALID &&
+            parse_uint32(args[0], &p->type) != 0)
+        goto splitargs_err;
+
+    for (i = 1; i < args_count - 1; ++i)
     {
-        if (sscanf(hw_id, "%li", &l_hw_id) != 1 ||
-                l_hw_id > UINT32_MAX)
-            ret = -1;
-        else
-            p->hw_id = l_hw_id;
+        if (strcmp(args[i], "z") == 0)
+            p->comp = 1;
+        else if (parse_uint32(args[i], &p->hw_id) != 0)
+            goto splitargs_err;
     }
-    if (ret == 0)
-        p->file = strdup(file);
 
-    free(type);
+    p->file = strdup(args[args_count - 1]);
 
+    ret = 0;
+
+splitargs_err:
+    free(split);
     if (ret != 0)
     {
         free(p);
-        return NULL;
+        p = NULL;
     }
-    else
-        return p;
+
+    return p;
 }
 
 static void free_part(struct part *p)
@@ -171,6 +173,34 @@ static void free_part(struct part *p)
         free(p->file);
         free(p);
     }
+}
+
+static int write_part(struct bpk *bpk, const struct part *p)
+{
+    int ret;
+    zctrl *ctrl;
+
+    if (p->comp)
+    {
+        ctrl = zopen(p->file, 1);
+        if (ctrl == NULL)
+            return -1;
+        ret = bpk_write_custom(bpk, p->type, p->hw_id,
+                (bpk_fill_func) zfill, ctrl);
+        zclose(ctrl);
+        return ret;
+    }
+    else
+        return bpk_write(bpk, p->type, p->hw_id, p->file);
+}
+
+static int read_part(struct bpk *bpk, bpk_size size, const struct part *p)
+{
+    if (p->comp)
+        return bpk_zread_file(bpk, size, p->file);
+    else
+        return bpk_read_file(bpk, p->file);
+
 }
 
 int main(int argc, char **argv)
@@ -291,13 +321,13 @@ int main(int argc, char **argv)
                     struct part *p = STAILQ_FIRST(&parts);
                     STAILQ_REMOVE_HEAD(&parts, parts);
 
-                    if (bpk_find(bpk, p->type, p->hw_id, NULL, NULL) != 0)
+                    if (bpk_find(bpk, p->type, p->hw_id, &size, NULL) != 0)
                     {
                         fprintf(stderr, "Failed to find part: %s\n",
                                 get_bpk_str(p->type));
                         ret = EXIT_FAILURE;
                     }
-                    else if (bpk_read_file(bpk, p->file) != 0)
+                    else if (read_part(bpk, size, p) != 0)
                     {
                         fprintf(stderr, "Failed to read part: %s:%s\n",
                                 get_bpk_str(p->type), p->file);
@@ -360,7 +390,7 @@ int main(int argc, char **argv)
                 struct part *p = STAILQ_FIRST(&parts);
                 STAILQ_REMOVE_HEAD(&parts, parts);
 
-                if (bpk_write(bpk, p->type, p->hw_id, p->file) != 0)
+                if (write_part(bpk, p) != 0)
                 {
                     fprintf(stderr, "Failed to write part: %s:%s\n",
                             get_bpk_str(p->type), p->file);

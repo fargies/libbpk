@@ -9,12 +9,12 @@ include_directories(
 
 if (TOOLS)
     set(mkbpk_SRCS
-        mkbpk.c)
+        mkbpk.c zio.c)
 
     add_executable(mkbpk
         ${mkbpk_SRCS})
     target_link_libraries(mkbpk
-        bpk)
+        bpk ${ZLIB_LIBRARIES})
     install(TARGETS mkbpk
         RUNTIME DESTINATION bin COMPONENT Runtime)
 endif (TOOLS)

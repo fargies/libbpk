@@ -100,7 +100,7 @@ static const uint32_t crc32_table[256] = {
 	0x2d02ef8dL
 };
 
-uint32_t crc32(const void *data, size_t len, uint32_t seed)
+uint32_t bpk_crc32(const void *data, size_t len, uint32_t seed)
 {
 	const unsigned char *s = data;
 

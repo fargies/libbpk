@@ -7,6 +7,7 @@ link_directories(
 include_directories(
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_BINARY_DIR}/src
+    ${CMAKE_SOURCE_DIR}/tools
     )
 
 add_library(testHelper STATIC
@@ -20,8 +21,16 @@ set(test_SRCS
     test_crc.cpp
     )
 
+if (TOOLS)
+    set(test_SRCS
+        ${test_SRCS}
+        test_zio.cpp
+        ${CMAKE_SOURCE_DIR}/tools/zio.c
+        )
+endif (TOOLS)
+
 add_executable(test_all ${test_SRCS})
-target_link_libraries(test_all testHelper bpk)
+target_link_libraries(test_all testHelper bpk ${ZLIB_LIBRARIES})
 install(TARGETS test_all
     RUNTIME DESTINATION tests/${PROJECT_NAME} COMPONENT tests)
 

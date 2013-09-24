@@ -28,9 +28,9 @@
 
 #include <stdint.h>
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
+#include "bpk_api.h"
+
+BEGIN_DECLS
 
 /**
  * @defgroup BPK BPK
@@ -42,6 +42,7 @@ extern "C" {
 #define BPK_TYPE_KER 0x504B4552 /* PKER */
 #define BPK_TYPE_RFS 0x50524653 /* PRFS */
 #define BPK_TYPE_FWV 0x46575600 /* FWV */
+#define BPK_TYPE_DEZC 0x44455A43 /* DEZC */
 #define BPK_TYPE_INVALID 0xDEADBEEF
 
 typedef struct bpk bpk;
@@ -56,7 +57,7 @@ typedef uint64_t bpk_size;
  *  - the newly created bpk file.
  *  - NULL on error (setting errno).
  */
-bpk *bpk_create(const char *file);
+EXPORT bpk *bpk_create(const char *file);
 
 /**
  * @brief open an existing bpk package.
@@ -69,13 +70,13 @@ bpk *bpk_create(const char *file);
  *  - the opened bpk file.
  *  - NULL on error (setting errno).
  */
-bpk *bpk_open(const char *file, int append);
+EXPORT bpk *bpk_open(const char *file, int append);
 
 /**
  * @brief close a bpk file.
  * @param[in] bpk the file to close.
  */
-void bpk_close(bpk *bpk);
+EXPORT void bpk_close(bpk *bpk);
 
 /**
  * @brief check a bpk file crc.
@@ -86,7 +87,7 @@ void bpk_close(bpk *bpk);
  *  - 0 if the crc is correct.
  *  - -1 otherwise.
  */
-int bpk_check_crc(bpk *bpk);
+EXPORT int bpk_check_crc(bpk *bpk);
 
 /**
  * @brief compute the file's crc.
@@ -97,7 +98,7 @@ int bpk_check_crc(bpk *bpk);
  *  - the computed crc.
  *  - 0xFFFFFFFF on error.
  */
-uint32_t bpk_compute_crc(bpk *bpk, uint32_t *file_crc);
+EXPORT uint32_t bpk_compute_crc(bpk *bpk, uint32_t *file_crc);
 
 /**
  * @brief write a file in the bpk package.
@@ -109,11 +110,38 @@ uint32_t bpk_compute_crc(bpk *bpk, uint32_t *file_crc);
  *  - 0 on success.
  *  - < 0 on failure (setting errno).
  */
-int bpk_write(
+EXPORT int bpk_write(
         bpk *bpk,
         bpk_type type,
         uint32_t hw_id,
         const char *file);
+
+/**
+ * @brief bpk reading function.
+ *
+ * @return
+ *  - 0 on EOF.
+ *  - <0 on error.
+ */
+typedef ssize_t (*bpk_fill_func)(void *buf, size_t count, void *attr);
+
+/**
+ * @brief write a file using a custom reading func.
+ * @param[in] bpk the bpk file to edit.
+ * @param[in] type the part type.
+ * @param[in] hw_id the associated hardware id.
+ * @param[in] func file reading function.
+ * @param[in] func_arg file reading function argument.
+ * @return
+ *  - 0 on success.
+ *  - < 0 on failure (setting errno).
+ */
+EXPORT int bpk_write_custom(
+        bpk *bpk,
+        bpk_type type,
+        uint32_t hw_id,
+        bpk_fill_func func,
+        void *func_arg);
 
 /**
  * @brief find a bpk partition.
@@ -127,7 +155,7 @@ int bpk_write(
  *  - 0 if found.
  *  - < 0 if not found.
  */
-int bpk_find(
+EXPORT int bpk_find(
         bpk *bpk,
         bpk_type type,
         uint32_t hw_id,
@@ -145,7 +173,7 @@ int bpk_find(
  *  - the found partition type.
  *  - BPK_TYPE_INVALID on eof.
  */
-bpk_type bpk_next(
+EXPORT bpk_type bpk_next(
         bpk *bpk,
         bpk_size *size,
         uint32_t *crc,
@@ -158,13 +186,13 @@ bpk_type bpk_next(
  *  - the computed crc.
  *  - 0xFFFFFFFF on error.
  */
-uint32_t bpk_compute_data_crc(bpk *bpk);
+EXPORT uint32_t bpk_compute_data_crc(bpk *bpk);
 
 /**
  * @brief move back to the first partition.
  * @param[in] bpk the bpk file to seek.
  */
-void bpk_rewind(bpk *bpk);
+EXPORT void bpk_rewind(bpk *bpk);
 
 /**
  * @brief reads some part of a bpk file.
@@ -175,7 +203,7 @@ void bpk_rewind(bpk *bpk);
  *  - the number of bytes read is returned.
  *  - 0 on error (setting errno).
  */
-bpk_size bpk_read(bpk *bpk, void *buf, bpk_size size);
+EXPORT bpk_size bpk_read(bpk *bpk, void *buf, bpk_size size);
 
 /**
  * @brief saves current bpk partition in a file.
@@ -185,15 +213,13 @@ bpk_size bpk_read(bpk *bpk, void *buf, bpk_size size);
  *  - 0 on success.
  *  - < 0 on error (setting errno).
  */
-int bpk_read_file(bpk *bpk, const char *file);
+EXPORT int bpk_read_file(bpk *bpk, const char *file);
 
 /**
  * @}
  */
 
-#if defined(__cplusplus)
-}
-#endif
+END_DECLS
 
 #endif
 
