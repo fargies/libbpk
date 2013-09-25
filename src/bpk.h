@@ -27,6 +27,7 @@
 #define __BPK_H__
 
 #include <stdint.h>
+#include <sys/types.h>
 
 #include "bpk_api.h"
 
