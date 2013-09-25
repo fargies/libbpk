@@ -10,12 +10,12 @@ set(libbpk_SRCS
     crc32.c crc32.h)
 
 set(libbpk_PUBHDRS
-    bpk.h)
+    bpk.h bpk_api.h)
 
 add_library(bpk
     ${libbpk_SRCS} ${libbpk_PUBHDRS})
 set_target_properties(bpk PROPERTIES
-    PUBLIC_HEADER ${libbpk_PUBHDRS})
+    PUBLIC_HEADER "${libbpk_PUBHDRS}")
 install(TARGETS bpk
     ARCHIVE DESTINATION lib COMPONENT Devel
     LIBRARY DESTINATION lib COMPONENT Runtime
